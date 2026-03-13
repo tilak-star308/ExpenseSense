@@ -11,7 +11,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ES">
-
+        <activity
+            android:name=".Onboarding"
+            android:exported="false" />
         <activity
             android:name=".LoginActivity"
             android:exported="true" />
@@ -27,6 +29,12 @@
         <activity
             android:name=".MainActivity"
             android:exported="true" />
+        <activity
+            android:name=".EmailVerificationActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AddTransactionActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

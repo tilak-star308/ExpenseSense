@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".Onboarding">
+
+    <!-- Bottom White Panel -->
+    <LinearLayout
+        android:id="@+id/bottomPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="@android:color/white"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp"
+            android:gravity="center"
+            android:text="Spend Smarter\nSave More"
+            android:textColor="@color/color_teal_primary"
+            android:textSize="32sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGetStarted"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="Get Started"
+            android:textAllCaps="false"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:backgroundTint="@color/color_teal_primary"
+            app:cornerRadius="30dp"
+            app:elevation="8dp"
+            android:elevation="12dp"
+            android:translationZ="4dp"
+            android:outlineAmbientShadowColor="@color/color_teal_primary"
+            android:outlineSpotShadowColor="@color/color_teal_primary"
+            tools:targetApi="p" />
+
+    </LinearLayout>
+
+    <!-- Background Pattern -->
+    <ImageView
+        android:id="@+id/ivBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/bottomPanel"
+        android:scaleType="centerCrop"
+        android:src="@drawable/onboardingmanbg" />
+
+    <!-- Main Character -->
+    <ImageView
+        android:id="@+id/ivIllustration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/bottomPanel"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="16dp"
+        android:layout_marginHorizontal="32dp"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:src="@drawable/onboardingman" />
+
+    <!-- Coin (Left side) -->
+
+    <!-- Donut (Right side) -->
+
+    <ImageView
+        android:id="@+id/ivCoin"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:layout_alignStart="@id/ivIllustration"
+        android:layout_alignTop="@id/ivIllustration"
+        android:layout_marginStart="38dp"
+        android:layout_marginTop="24dp"
+        android:elevation="4dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/coint" />
+
+    <ImageView
+        android:id="@+id/ivDonut"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:layout_alignTop="@id/ivIllustration"
+        android:layout_alignEnd="@id/ivIllustration"
+        android:layout_marginTop="63dp"
+        android:layout_marginEnd="51dp"
+        android:elevation="4dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/donut" />
+
+</RelativeLayout>

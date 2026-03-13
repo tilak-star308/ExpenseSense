@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
@@ -7,27 +8,44 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-        android:id="@+id/tvWelcome"
+    <!-- Fragment content area — bottom padding prevents overlap with the nav bar -->
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/fragmentContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingBottom="72dp" />
+
+    <!-- Bottom Navigation — pinned to bottom -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigationView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@android:color/white"
+        android:elevation="8dp"
+        app:itemIconSize="28dp"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/bottom_nav_menu_home" />
+
+    <!--
+        Floating Action Button
+        • fabCustomSize="64dp" → larger, clearly circular pill
+        • shapeAppearance Full → forces a perfect circle
+        • marginBottom="52dp" → lifts it well above the nav bar
+    -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabAdd"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Dashboard"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@+id/btnLogout"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_chainStyle="packed" />
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="44dp"
+        android:contentDescription="Add Transaction"
+        android:src="@drawable/ic_add"
+        app:backgroundTint="#008080"
+        app:elevation="12dp"
+        app:fabCustomSize="64dp"
+        app:maxImageSize="30dp"
+        app:shapeAppearance="@style/ShapeAppearance.Material3.Corner.Full"
+        app:tint="@android:color/white" />
 
-    <Button
-        android:id="@+id/btnLogout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:text="Logout"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvWelcome" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
