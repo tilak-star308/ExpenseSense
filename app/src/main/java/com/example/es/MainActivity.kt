@@ -18,6 +18,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomNavigationView: BottomNavigationView
     private lateinit var fabAdd: FloatingActionButton
 
+    // Callback set by HomeFragment so FAB routes through it
+    private var addExpenseAction: (() -> Unit)? = null
+
+    fun setAddExpenseLauncher(action: () -> Unit) {
+        addExpenseAction = action
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -68,9 +75,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // FAB opens AddTransactionActivity regardless of which screen is active
+        // FAB delegates to HomeFragment when available, otherwise opens AddExpenseActivity directly
         fabAdd.setOnClickListener {
-            startActivity(Intent(this, AddTransactionActivity::class.java))
+            addExpenseAction?.invoke()
+                ?: startActivity(Intent(this, AddExpenseActivity::class.java))
         }
     }
 
