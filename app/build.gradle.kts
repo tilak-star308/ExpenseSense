@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.gms.google.services)
+    id("kotlin-parcelize")
 }
 
 android {
@@ -50,6 +51,7 @@ dependencies {
     implementation(libs.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.firebase.database)
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

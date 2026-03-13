@@ -1,14 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F2F4F7">
 
+    <!-- Header area -->
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:text="Home Fragment"
-        android:textSize="24sp"
+        android:padding="20dp"
+        android:text="Recent Transactions"
+        android:textColor="#1A1A2E"
+        android:textSize="18sp"
         android:textStyle="bold" />
 
-</FrameLayout>
+    <!-- Empty state -->
+    <TextView
+        android:id="@+id/tvEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="32dp"
+        android:text="No expenses yet.\nTap + to add one!"
+        android:textColor="#AAAAAA"
+        android:textSize="15sp"
+        android:visibility="visible" />
+
+    <!-- Expense list -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvExpenses"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="80dp"
+        android:visibility="gone" />
+
+</LinearLayout>

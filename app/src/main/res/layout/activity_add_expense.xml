@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  APPROACH: activityheaderbg used as a plain <ImageView>, NOT as a drawable background.
+  - adjustViewBounds="true" + scaleType="fitXY" makes the image fill the full width
+    while its height adapts naturally to the image's own aspect ratio → works on
+    every screen size / density without any hard-coded heights.
+  - Header controls (back, title, 3-dots) sit in a FrameLayout that is constrained
+    to exactly the same bounds as the image view.
+  - The form card is laid out BELOW the image with a negative top margin so it
+    visually overlaps the curved bottom edge, matching the reference design.
+  - All inputs (NAME · AMOUNT · DATE) live inside the single CardView container.
+  - Invoice section is fully removed.
+  - ADD EXPENSE button is pinned to the parent bottom so it is always visible.
+-->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    tools:context=".AddExpenseActivity">
+
+    <!-- ════════════════════════════════════════════════════════════════
+         1.  HEADER IMAGE
+             • match_parent width, wrap_content height
+             • adjustViewBounds="true"  → height scales with aspect ratio
+             • scaleType="fitXY"        → fills the measured width so no
+                                          side gutters appear on any screen
+         ════════════════════════════════════════════════════════════════ -->
+    <ImageView
+        android:id="@+id/imgHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:adjustViewBounds="true"
+        android:contentDescription="Header background"
+        android:scaleType="fitXY"
+        android:src="@drawable/activityheaderbg" />
+
+    <!-- ════════════════════════════════════════════════════════════════
+         2.  HEADER CONTROLS  (overlaid on top of the image)
+             Aligned to the exact top/bottom of imgHeader so the padding
+             inside here positions elements relative to the image itself.
+         ════════════════════════════════════════════════════════════════ -->
+    <RelativeLayout
+        android:id="@+id/headerControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@id/imgHeader"
+        android:layout_alignBottom="@id/imgHeader">
+
+        <!-- Back arrow -->
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_alignParentStart="true"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Back"
+            android:src="@drawable/ic_back_arrow"
+            app:tint="#FFFFFF" />
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="56dp"
+            android:text="Add Expense"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold|italic"
+            android:letterSpacing="0.02" />
+
+        <!-- Three-dot menu -->
+        <ImageButton
+            android:id="@+id/btnMenu"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="48dp"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="More options"
+            android:src="@drawable/ic_dots_menu"
+            app:tint="#FFFFFF" />
+
+    </RelativeLayout>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         3.  ADD EXPENSE BUTTON  — pinned to screen bottom, always visible
+         ════════════════════════════════════════════════════════════════ -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAddExpense"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="28dp"
+        android:elevation="12dp"
+        android:outlineAmbientShadowColor="@color/color_teal_primary"
+        android:outlineSpotShadowColor="@color/color_teal_primary"
+        android:text="Add Expense"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:translationZ="4dp"
+        app:backgroundTint="@color/color_teal_primary"
+        app:cornerRadius="30dp"
+        app:elevation="8dp"
+        tools:targetApi="p"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <!-- ════════════════════════════════════════════════════════════════
+         4.  SCROLLABLE FORM  (sits above button, overlaps header bottom)
+             layout_below=imgHeader positions top at the image's bottom.
+             The negative marginTop (-36dp) pulls the CardView UP so it
+             overlaps the curved lower edge of the header image — matching
+             the reference design.
+         ════════════════════════════════════════════════════════════════ -->
+    <ScrollView
+        android:id="@+id/scrollContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/btnAddExpense"
+        android:layout_below="@id/imgHeader"
+        android:layout_marginTop="-120dp"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="16dp">
+
+            <!-- ── PARENT FORM CARD ─────────────────────────────────── -->
+            <!--  White elevated card with rounded corners
+                  contains ALL three input fields internally              -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardForm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                app:cardBackgroundColor="#FFFFFF"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="10dp"
+                app:cardUseCompatPadding="false">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="20dp"
+                    android:paddingTop="22dp"
+                    android:paddingEnd="20dp"
+                    android:paddingBottom="26dp">
+
+                    <!-- ┌─ NAME ──────────────────────────────────────┐ -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.12"
+                        android:text="NAME"
+                        android:textAllCaps="true"
+                        android:textColor="#AAAAAA"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_field_normal"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="12dp">
+
+                        <EditText
+                            android:id="@+id/etName"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_toStartOf="@+id/ivDropdown"
+                            android:background="@null"
+                            android:hint="e.g. Netflix"
+                            android:imeOptions="actionNext"
+                            android:inputType="textCapWords"
+                            android:paddingEnd="4dp"
+                            android:textColor="#2C2C2C"
+                            android:textColorHint="#C5C5C5"
+                            android:textSize="15sp" />
+
+                        <ImageView
+                            android:id="@+id/ivDropdown"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_alignParentEnd="true"
+                            android:layout_centerVertical="true"
+                            android:contentDescription="Dropdown"
+                            android:src="@android:drawable/arrow_down_float"
+                            app:tint="#BBBBBB" />
+                    </RelativeLayout>
+                    <!-- └─────────────────────────────────────────────┘ -->
+
+                    <!-- ┌─ AMOUNT ────────────────────────────────────┐ -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:letterSpacing="0.12"
+                        android:text="AMOUNT"
+                        android:textAllCaps="true"
+                        android:textColor="#AAAAAA"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_field_teal"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp">
+
+                        <EditText
+                            android:id="@+id/etAmount"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_toStartOf="@+id/tvClear"
+                            android:background="@null"
+                            android:hint="₹ 0.00"
+                            android:imeOptions="actionNext"
+                            android:inputType="numberDecimal"
+                            android:paddingEnd="4dp"
+                            android:textColor="#2ABFBF"
+                            android:textColorHint="#A8DEDE"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvClear"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:layout_centerVertical="true"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:paddingStart="8dp"
+                            android:text="Clear"
+                            android:textColor="#2ABFBF"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </RelativeLayout>
+                    <!-- └─────────────────────────────────────────────┘ -->
+
+                    <!-- ┌─ DATE ──────────────────────────────────────┐ -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:letterSpacing="0.12"
+                        android:text="DATE"
+                        android:textAllCaps="true"
+                        android:textColor="#AAAAAA"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <RelativeLayout
+                        android:id="@+id/layoutDate"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_field_normal"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp">
+
+                        <TextView
+                            android:id="@+id/tvDate"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_toStartOf="@+id/ivCalendar"
+                            android:gravity="center_vertical"
+                            android:hint="Select Date"
+                            android:paddingEnd="4dp"
+                            android:textColor="#2C2C2C"
+                            android:textColorHint="#C5C5C5"
+                            android:textSize="15sp" />
+
+                        <ImageView
+                            android:id="@+id/ivCalendar"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_alignParentEnd="true"
+                            android:layout_centerVertical="true"
+                            android:contentDescription="Pick date"
+                            android:src="@drawable/ic_calendar"
+                            app:tint="#BBBBBB" />
+                    </RelativeLayout>
+                    <!-- └─────────────────────────────────────────────┘ -->
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+            <!-- ── END FORM CARD ──────────────────────────────────────── -->
+
+        </LinearLayout>
+    </ScrollView>
+
+</RelativeLayout>
