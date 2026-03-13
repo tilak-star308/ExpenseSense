@@ -84,9 +84,10 @@ class SignUpActivity : AppCompatActivity() {
                     if (task.isSuccessful) {
                         val user = auth.currentUser
                         user?.sendEmailVerification()?.addOnCompleteListener {
-                            Toast.makeText(this, "Verification email sent", Toast.LENGTH_SHORT).show()
-                            auth.signOut()
-                            goToLoginActivity()
+                            Toast.makeText(this, "Verification email sent. Please check your inbox.", Toast.LENGTH_SHORT).show()
+                            val intent = Intent(this, EmailVerificationActivity::class.java)
+                            startActivity(intent)
+                            finish()
                         }
                     } else {
                         Toast.makeText(this, "Signup failed", Toast.LENGTH_SHORT).show()

@@ -86,7 +86,13 @@
         android:textAllCaps="false"
         android:textSize="16sp"
         app:backgroundTint="@color/color_teal_primary"
-        app:cornerRadius="30dp" />
+        app:cornerRadius="30dp"
+        app:elevation="8dp"
+        android:elevation="12dp"
+        android:translationZ="4dp"
+        android:outlineAmbientShadowColor="@color/color_teal_primary"
+        android:outlineSpotShadowColor="@color/color_teal_primary"
+        tools:targetApi="p" />
 
     <!-- Or Sign In With Text -->
     <TextView
