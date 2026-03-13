@@ -307,6 +307,29 @@
                     </RelativeLayout>
                     <!-- └─────────────────────────────────────────────┘ -->
 
+                    <!-- ┌─ CATEGORY ──────────────────────────────────┐ -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:letterSpacing="0.12"
+                        android:text="CATEGORY"
+                        android:textAllCaps="true"
+                        android:textColor="#AAAAAA"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/spinnerCategory"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_field_normal"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:entries="@array/transaction_categories" />
+                    <!-- └─────────────────────────────────────────────┘ -->
+
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
             <!-- ── END FORM CARD ──────────────────────────────────────── -->

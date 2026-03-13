@@ -18,7 +18,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomNavigationView: BottomNavigationView
     private lateinit var fabAdd: FloatingActionButton
 
-    // Callback set by HomeFragment so FAB routes through fragment's ActivityResultLauncher
+    // Callback set by HomeFragment so FAB routes through it
     private var addExpenseAction: (() -> Unit)? = null
 
     fun setAddExpenseLauncher(action: () -> Unit) {
@@ -75,7 +75,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // FAB delegates to HomeFragment (uses ActivityResultLauncher) when available
+        // FAB delegates to HomeFragment when available, otherwise opens AddExpenseActivity directly
         fabAdd.setOnClickListener {
             addExpenseAction?.invoke()
                 ?: startActivity(Intent(this, AddExpenseActivity::class.java))

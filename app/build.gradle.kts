@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.gms.google.services)
     id("kotlin-parcelize")
+    id("kotlin-kapt")
 }
 
 android {
@@ -52,6 +53,9 @@ dependencies {
     implementation(libs.googleid)
     implementation(libs.firebase.database)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    // Room
+    implementation("androidx.room:room-runtime:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
