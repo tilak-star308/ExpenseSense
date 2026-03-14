@@ -34,6 +34,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        viewBinding = true
     }
 
     buildTypes {
@@ -78,4 +79,12 @@ dependencies {
     
     // Gemini AI
     implementation("com.google.ai.client.generativeai:generativeai:0.7.0")
+    
+    // Charts
+    implementation(libs.mpandroidchart)
+    
+    // Lifecycle
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
 }
