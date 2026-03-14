@@ -27,10 +27,12 @@ class AddExpenseActivity : AppCompatActivity() {
     private lateinit var tvClear: TextView
     private lateinit var layoutDate: RelativeLayout
     private lateinit var spinnerCategory: Spinner
+    private lateinit var spinnerAccount: Spinner
     private lateinit var btnAddExpense: MaterialButton
 
     private val calendar = Calendar.getInstance()
     private lateinit var budgetRepository: BudgetRepository
+    private lateinit var accountRepository: AccountRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +40,7 @@ class AddExpenseActivity : AppCompatActivity() {
 
         val database = AppDatabase.getDatabase(this)
         budgetRepository = BudgetRepository(database.budgetDao(), database.transactionDao())
+        accountRepository = AccountRepository(database.accountDao())
 
         btnBack       = findViewById(R.id.btnBack)
         etName        = findViewById(R.id.etName)
@@ -46,6 +49,7 @@ class AddExpenseActivity : AppCompatActivity() {
         tvClear       = findViewById(R.id.tvClear)
         layoutDate    = findViewById(R.id.layoutDate)
         spinnerCategory = findViewById(R.id.spinnerCategory)
+        spinnerAccount  = findViewById(R.id.spinnerAccount)
         btnAddExpense = findViewById(R.id.btnAddExpense)
 
         // Populate category spinner
@@ -55,6 +59,16 @@ class AddExpenseActivity : AppCompatActivity() {
             android.R.layout.simple_spinner_item,
             categories
         ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+
+        // Populate account spinner
+        accountRepository.getAllAccounts { accounts ->
+            runOnUiThread {
+                val accountNames = accounts.map { it.name }
+                val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, accountNames)
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                spinnerAccount.adapter = adapter
+            }
+        }
 
         // Pre-fill today's date
         updateDateLabel()
@@ -186,6 +200,7 @@ class AddExpenseActivity : AppCompatActivity() {
 
         val username  = user.email!!.substringBefore("@")
         val category  = spinnerCategory.selectedItem.toString()
+        val account   = spinnerAccount.selectedItem?.toString() ?: "Cash"
         val timestamp = calendar.timeInMillis   // use selected date millis
 
         // To prevent exact titles (like "Pizza") from overwriting each other in Firebase, 
@@ -198,7 +213,8 @@ class AddExpenseActivity : AppCompatActivity() {
         // This is exactly what is saved under the Title node in Firebase
         val firebaseExpenseData = mapOf(
             "timestamp" to timestamp,
-            "amount" to amount
+            "amount" to amount,
+            "account" to account
         )
 
         // The local Room DB object (keeps all fields for UI rendering)
@@ -206,6 +222,7 @@ class AddExpenseActivity : AppCompatActivity() {
             title      = name,    // The clean title for the UI
             amount     = amount,
             category   = category,
+            accountName = account,
             timestamp  = timestamp,
             firebaseId = uniqueTitleKey // We store the unique key so we can delete it later
         )
@@ -213,13 +230,10 @@ class AddExpenseActivity : AppCompatActivity() {
         // Save to Firebase with listeners to catch errors
         databaseRef.setValue(firebaseExpenseData)
             .addOnSuccessListener {
-                // Deduct from budget locally and in Firebase
-                val monthYear = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(
-                    Date(
-                        timestamp
-                    )
-                )
+                // Deduct from budget and account
+                val monthYear = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(timestamp))
                 budgetRepository.deductFromBudget(monthYear, amount)
+                accountRepository.updateBalance(account, -amount)
 
                 // Save to Room on background thread, then close activity
                 Thread {
@@ -235,9 +249,10 @@ class AddExpenseActivity : AppCompatActivity() {
             .addOnFailureListener { exception ->
                 Toast.makeText(this, "Firebase Error: ${exception.message}", Toast.LENGTH_LONG).show()
                 
-                // Still deduct from budget locally
+                // Still deduct from budget and account locally
                 val monthYear = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(timestamp))
                 budgetRepository.deductFromBudget(monthYear, amount)
+                accountRepository.updateBalance(account, -amount)
 
                 // Still save to Room so data isn't lost
                 Thread {

@@ -9,6 +9,7 @@ data class Transaction(
     val title: String,
     val amount: Double,
     val category: String,
+    val accountName: String, // Associate with an account
     val timestamp: Long,
     val firebaseId: String? = null
 )

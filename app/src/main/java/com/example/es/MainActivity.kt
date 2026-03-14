@@ -80,6 +80,24 @@ class MainActivity : AppCompatActivity() {
             addExpenseAction?.invoke()
                 ?: startActivity(Intent(this, AddExpenseActivity::class.java))
         }
+
+        checkAndCreateDefaultAccount()
+    }
+
+    private fun checkAndCreateDefaultAccount() {
+        val prefs = getSharedPreferences("ExpenseSensePrefs", MODE_PRIVATE)
+        val isFirstRun = prefs.getBoolean("isFirstRun_Accounts", true)
+
+        if (isFirstRun) {
+            val database = AppDatabase.getDatabase(this)
+            val repository = AccountRepository(database.accountDao())
+            
+            // Create default Cash account
+            val defaultAccount = Account("Cash", "Wallet", 0.0)
+            repository.saveAccount(defaultAccount)
+
+            prefs.edit().putBoolean("isFirstRun_Accounts", false).apply()
+        }
     }
 
     /**

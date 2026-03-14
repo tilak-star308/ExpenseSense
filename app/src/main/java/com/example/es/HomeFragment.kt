@@ -11,6 +11,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.text.SimpleDateFormat
@@ -36,6 +37,8 @@ class HomeFragment : Fragment() {
 
     // Budget UI
     private lateinit var budgetViewModel: BudgetViewModel
+    private lateinit var accountViewModel: AccountViewModel
+    private lateinit var rvAccountsMini: RecyclerView
     private lateinit var layoutBudgetData: LinearLayout
     private lateinit var layoutBudgetInput: LinearLayout
     private lateinit var tvNoBudget: TextView
@@ -48,6 +51,9 @@ class HomeFragment : Fragment() {
     private lateinit var tvBudgetRemaining: TextView
     private lateinit var tvBudgetTotal: TextView
 
+    private var accountList = mutableListOf<Account>()
+    private lateinit var accountAdapter: AccountMiniAdapter
+    
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -58,10 +64,16 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        rvTransactions = view.findViewById(R.id.rvTransactions)
-        tvTotal        = view.findViewById(R.id.tvTotal)
-        tvMonthTotal   = view.findViewById(R.id.tvMonthTotal)
-        tvEmpty        = view.findViewById(R.id.tvEmpty)
+        rvTransactions  = view.findViewById(R.id.rvTransactions)
+        rvAccountsMini  = view.findViewById(R.id.rvAccountsMini)
+        tvTotal         = view.findViewById(R.id.tvTotal)
+        tvMonthTotal    = view.findViewById(R.id.tvMonthTotal)
+        tvEmpty         = view.findViewById(R.id.tvEmpty)
+
+        // Account Mini Grid
+        rvAccountsMini.layoutManager = GridLayoutManager(requireContext(), 2)
+        accountAdapter = AccountMiniAdapter(accountList)
+        rvAccountsMini.adapter = accountAdapter
 
         // Budget Views
         layoutBudgetData  = view.findViewById(R.id.layoutBudgetData)
@@ -79,6 +91,7 @@ class HomeFragment : Fragment() {
         rvTransactions.layoutManager = LinearLayoutManager(requireContext())
 
         setupBudgetViewModel()
+        setupAccountViewModel()
 
         btnSetBudget.setOnClickListener { 
             showInputMode(true)
@@ -105,6 +118,19 @@ class HomeFragment : Fragment() {
         // Expose the launcher so MainActivity can trigger it via the FAB
         (activity as? MainActivity)?.setAddExpenseLauncher {
             startActivity(Intent(requireContext(), AddExpenseActivity::class.java))
+        }
+    }
+
+    private fun setupAccountViewModel() {
+        val database = AppDatabase.getDatabase(requireContext())
+        val repository = AccountRepository(database.accountDao())
+        val factory = AccountViewModelFactory(repository)
+        accountViewModel = ViewModelProvider(this, factory).get(AccountViewModel::class.java)
+
+        accountViewModel.accounts.observe(viewLifecycleOwner) { accounts ->
+            accountList.clear()
+            accountList.addAll(accounts)
+            accountAdapter.notifyDataSetChanged()
         }
     }
 
@@ -177,6 +203,7 @@ class HomeFragment : Fragment() {
         loadFromRoom()      // offline-first: instant display
         syncWithFirebase()  // background sync, non-blocking
         budgetViewModel.loadCurrentMonthBudget()
+        accountViewModel.loadAccounts()
     }
 
     // ── Room load ─────────────────────────────────────────────────────────────
@@ -241,11 +268,13 @@ class HomeFragment : Fragment() {
                                     
                                     val timestamp = expenseSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
                                     val amount = expenseSnapshot.child("amount").getValue(Double::class.java) ?: 0.0
+                                    val accountName = expenseSnapshot.child("account").getValue(String::class.java) ?: "Cash"
                                     
                                     val record = Transaction(
                                         title      = cleanTitle,
                                         amount     = amount,
                                         category   = categoryName,
+                                        accountName = accountName,
                                         timestamp  = timestamp,
                                         firebaseId = uniqueTitleKey // Store unique key for deletion
                                     )
@@ -287,6 +316,29 @@ class HomeFragment : Fragment() {
 
                 override fun onCancelled(error: DatabaseError) { }
             })
+
+        // Also sync accounts
+        FirebaseDatabase.getInstance()
+            .getReference("users/$username/accounts")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (!isAdded || context == null) return
+                    val safeContext = requireContext()
+                    
+                    Thread {
+                        val dao = AppDatabase.getDatabase(safeContext).accountDao()
+                        for (accountSnapshot in snapshot.children) {
+                            val account = accountSnapshot.getValue(Account::class.java)
+                            if (account != null) {
+                                dao.insertAccount(account)
+                            }
+                        }
+                        activity?.runOnUiThread { accountViewModel.loadAccounts() }
+                    }.start()
+                }
+
+                override fun onCancelled(error: DatabaseError) { }
+            })
     }
 
     // ── Delete ────────────────────────────────────────────────────────────────
@@ -316,6 +368,10 @@ class HomeFragment : Fragment() {
                 AppDatabase.getDatabase(requireContext()).transactionDao()
             )
             repository.reimburseBudget(monthYear, record.amount)
+
+            // Reimbursing account balance
+            val accountRepo = AccountRepository(AppDatabase.getDatabase(requireContext()).accountDao())
+            accountRepo.updateBalance(record.accountName, record.amount)
 
             activity?.runOnUiThread { 
                 loadFromRoom()
