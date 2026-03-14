@@ -5,7 +5,7 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "budgets")
 data class Budget(
-    @PrimaryKey val monthYear: String, // format: MM-yyyy, e.g. "03-2026"
-    val totalBudget: Double,
-    val remainingBudget: Double
+    @PrimaryKey val monthYear: String = "", 
+    val totalBudget: Double = 0.0,
+    val remainingBudget: Double = 0.0
 )
