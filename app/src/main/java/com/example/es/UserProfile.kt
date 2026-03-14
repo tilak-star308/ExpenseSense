@@ -1,0 +1,13 @@
+package com.example.es
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "user_profile")
+data class UserProfile(
+    @PrimaryKey
+    val uid: String,
+    val name: String,
+    val email: String,
+    val profileImageUrl: String? = null
+)
