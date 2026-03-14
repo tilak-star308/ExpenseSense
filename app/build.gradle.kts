@@ -66,6 +66,8 @@ dependencies {
     implementation(libs.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.firebase.database)
+    implementation(libs.firebase.storage)
+    implementation(libs.coil)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     // Room
     implementation("androidx.room:room-runtime:2.6.1")

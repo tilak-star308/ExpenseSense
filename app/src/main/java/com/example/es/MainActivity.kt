@@ -27,20 +27,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_main)
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0)
-            insets
-        }
 
         bottomNavigationView = findViewById(R.id.bottomNavigationView)
         fabAdd = findViewById(R.id.fabAdd)
 
         // Load default fragment and apply home nav state
         if (savedInstanceState == null) {
+            updateStatusBar(false)
             applyHomeNav()
             loadFragment(HomeFragment())
         }
@@ -48,21 +42,25 @@ class MainActivity : AppCompatActivity() {
         bottomNavigationView.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> {
+                    updateStatusBar(false)
                     applyHomeNav()
                     loadFragment(HomeFragment())
                     true
                 }
                 R.id.nav_analytics -> {
+                    updateStatusBar(false)
                     applyNormalNav()
                     loadFragment(AnalyticsFragment())
                     true
                 }
                 R.id.nav_wallet -> {
+                    updateStatusBar(true)
                     applyNormalNav()
                     loadFragment(WalletFragment())
                     true
                 }
                 R.id.nav_profile -> {
+                    updateStatusBar(true)
                     applyNormalNav()
                     loadFragment(ProfileFragment())
                     true
@@ -115,15 +113,19 @@ class MainActivity : AppCompatActivity() {
             bottomNavigationView.setOnItemSelectedListener { item ->
                 when (item.itemId) {
                     R.id.nav_home -> {
+                        updateStatusBar(false)
                         applyHomeNav(); loadFragment(HomeFragment()); true
                     }
                     R.id.nav_analytics -> {
+                        updateStatusBar(false)
                         applyNormalNav(); loadFragment(AnalyticsFragment()); true
                     }
                     R.id.nav_wallet -> {
+                        updateStatusBar(true)
                         applyNormalNav(); loadFragment(WalletFragment()); true
                     }
                     R.id.nav_profile -> {
+                        updateStatusBar(true)
                         applyNormalNav(); loadFragment(ProfileFragment()); true
                     }
                     R.id.nav_placeholder -> false
@@ -146,15 +148,19 @@ class MainActivity : AppCompatActivity() {
             bottomNavigationView.setOnItemSelectedListener { item ->
                 when (item.itemId) {
                     R.id.nav_home -> {
+                        updateStatusBar(false)
                         applyHomeNav(); loadFragment(HomeFragment()); true
                     }
                     R.id.nav_analytics -> {
+                        updateStatusBar(false)
                         applyNormalNav(); loadFragment(AnalyticsFragment()); true
                     }
                     R.id.nav_wallet -> {
+                        updateStatusBar(true)
                         applyNormalNav(); loadFragment(WalletFragment()); true
                     }
                     R.id.nav_profile -> {
+                        updateStatusBar(true)
                         applyNormalNav(); loadFragment(ProfileFragment()); true
                     }
                     else -> false
@@ -162,6 +168,25 @@ class MainActivity : AppCompatActivity() {
             }
         }
         hideFab()
+    }
+
+    private fun updateStatusBar(isHeaderMatch: Boolean) {
+        val window = window
+        val decorView = window.decorView
+        val wic = androidx.core.view.WindowInsetsControllerCompat(window, decorView)
+        
+        // Ensure the window draws the system bar backgrounds
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+        
+        if (isHeaderMatch) {
+            // Match the teal header color (#2ABFBF)
+            window.statusBarColor = android.graphics.Color.parseColor("#2ABFBF")
+            wic.isAppearanceLightStatusBars = false // White text/icons
+        } else {
+            // White status bar for light screens
+            window.statusBarColor = android.graphics.Color.WHITE
+            wic.isAppearanceLightStatusBars = true // Dark text/icons
+        }
     }
 
     private fun loadFragment(fragment: Fragment) {
