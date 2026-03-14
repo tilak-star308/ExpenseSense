@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 class AddExpenseActivity : AppCompatActivity() {
@@ -29,10 +30,14 @@ class AddExpenseActivity : AppCompatActivity() {
     private lateinit var btnAddExpense: MaterialButton
 
     private val calendar = Calendar.getInstance()
+    private lateinit var budgetRepository: BudgetRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_expense)
+
+        val database = AppDatabase.getDatabase(this)
+        budgetRepository = BudgetRepository(database.budgetDao(), database.transactionDao())
 
         btnBack       = findViewById(R.id.btnBack)
         etName        = findViewById(R.id.etName)
@@ -208,6 +213,14 @@ class AddExpenseActivity : AppCompatActivity() {
         // Save to Firebase with listeners to catch errors
         databaseRef.setValue(firebaseExpenseData)
             .addOnSuccessListener {
+                // Deduct from budget locally and in Firebase
+                val monthYear = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(
+                    Date(
+                        timestamp
+                    )
+                )
+                budgetRepository.deductFromBudget(monthYear, amount)
+
                 // Save to Room on background thread, then close activity
                 Thread {
                     AppDatabase.getDatabase(this@AddExpenseActivity)
@@ -221,6 +234,11 @@ class AddExpenseActivity : AppCompatActivity() {
             }
             .addOnFailureListener { exception ->
                 Toast.makeText(this, "Firebase Error: ${exception.message}", Toast.LENGTH_LONG).show()
+                
+                // Still deduct from budget locally
+                val monthYear = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(timestamp))
+                budgetRepository.deductFromBudget(monthYear, amount)
+
                 // Still save to Room so data isn't lost
                 Thread {
                     AppDatabase.getDatabase(this@AddExpenseActivity)
