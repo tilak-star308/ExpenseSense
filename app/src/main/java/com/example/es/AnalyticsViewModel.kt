@@ -19,8 +19,39 @@ class AnalyticsViewModel(private val repository: TransactionRepository) : ViewMo
     private val _heatmapData = MutableLiveData<List<Float>>()
     val heatmapData: LiveData<List<Float>> = _heatmapData
 
+    private val _heatmapTotals = MutableLiveData<List<Float>>()
+    val heatmapTotals: LiveData<List<Float>> = _heatmapTotals
+
+    private val _availableMonths = MutableLiveData<List<Calendar>>()
+    val availableMonths: LiveData<List<Calendar>> = _availableMonths
+
     private val _chartData = MutableLiveData<Pair<List<Entry>, List<String>>>()
     val chartData: LiveData<Pair<List<Entry>, List<String>>> = _chartData
+
+    init {
+        loadAvailableMonths()
+    }
+
+    private fun loadAvailableMonths() {
+        viewModelScope.launch {
+            val firstTimestamp = repository.getFirstTransactionTimestamp()
+            val months = mutableListOf<Calendar>()
+            val current = Calendar.getInstance()
+            
+            val start = Calendar.getInstance()
+            if (firstTimestamp != null) {
+                start.timeInMillis = firstTimestamp
+            }
+            start.set(Calendar.DAY_OF_MONTH, 1)
+
+            val temp = start.clone() as Calendar
+            while (temp.timeInMillis <= current.timeInMillis) {
+                months.add(temp.clone() as Calendar)
+                temp.add(Calendar.MONTH, 1)
+            }
+            _availableMonths.postValue(months.reversed())
+        }
+    }
 
     fun fetchData(timeRange: String, selectedCalendar: Calendar) {
         viewModelScope.launch {
@@ -188,6 +219,7 @@ class AnalyticsViewModel(private val repository: TransactionRepository) : ViewMo
             }
         }
 
+        _heatmapTotals.postValue(dailyTotals.toList())
         return dailyTotals.map { it / maxTotal }
     }
 }

@@ -20,6 +20,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE timestamp BETWEEN :startTime AND :endTime")
     fun getTransactionsInRange(startTime: Long, endTime: Long): List<Transaction>
 
+    @Query("SELECT MIN(timestamp) FROM transactions")
+    fun getFirstTransactionTimestamp(): Long?
+
     @Delete
     fun deleteTransaction(transaction: Transaction)
 }
