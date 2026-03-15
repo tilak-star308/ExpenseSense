@@ -88,12 +88,26 @@ class AnalyticsFragment : Fragment() {
         binding.rvTopSpending.layoutManager = LinearLayoutManager(requireContext())
         binding.rvTopSpending.adapter = topSpendingAdapter
 
-        binding.btnSelectMonth.text = SimpleDateFormat("MMM yyyy", Locale.getDefault()).format(selectedCalendar.time)
-        binding.btnSelectMonth.setOnClickListener {
-            // Simple Month Picker logic: go back one month for now
-            selectedCalendar.add(Calendar.MONTH, -1)
-            binding.btnSelectMonth.text = SimpleDateFormat("MMM yyyy", Locale.getDefault()).format(selectedCalendar.time)
-            viewModel.fetchData(currentTimeRange, selectedCalendar)
+        // Heatmap Month Spinner
+        viewModel.availableMonths.observe(viewLifecycleOwner) { months ->
+            val monthStrings = months.map { SimpleDateFormat("MMM yyyy", Locale.getDefault()).format(it.time) }
+            val monthAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, monthStrings)
+            monthAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            binding.spinnerHeatmapMonth.adapter = monthAdapter
+            
+            // Set current month as default selection if possible
+            val currentIdx = months.indexOfFirst { it.get(Calendar.MONTH) == selectedCalendar.get(Calendar.MONTH) && it.get(Calendar.YEAR) == selectedCalendar.get(Calendar.YEAR) }
+            if (currentIdx != -1) binding.spinnerHeatmapMonth.setSelection(currentIdx)
+            
+            binding.spinnerHeatmapMonth.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                    val targetMonth = months[position]
+                    selectedCalendar.set(Calendar.MONTH, targetMonth.get(Calendar.MONTH))
+                    selectedCalendar.set(Calendar.YEAR, targetMonth.get(Calendar.YEAR))
+                    viewModel.fetchData(currentTimeRange, selectedCalendar)
+                }
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            }
         }
     }
 
@@ -156,6 +170,8 @@ class AnalyticsFragment : Fragment() {
         }
     }
 
+    private var currentHeatmapTotals: List<Float> = emptyList()
+
     private fun observeData() {
         viewModel.topSpending.observe(viewLifecycleOwner) {
             topSpendingAdapter.updateData(it)
@@ -171,6 +187,10 @@ class AnalyticsFragment : Fragment() {
 
         viewModel.heatmapData.observe(viewLifecycleOwner) {
             updateHeatmapUI(it)
+        }
+
+        viewModel.heatmapTotals.observe(viewLifecycleOwner) {
+            currentHeatmapTotals = it
         }
     }
 
@@ -190,6 +210,11 @@ class AnalyticsFragment : Fragment() {
             labelRotationAngle = if (labels.size > 15) -15f else 0f
         }
 
+        // Set Marker
+        val marker = CustomMarkerView(requireContext(), R.layout.layout_chart_marker, labels)
+        marker.chartView = binding.lineChart
+        binding.lineChart.marker = marker
+
         val dataSet = LineDataSet(entries, "Expenses").apply {
             mode = LineDataSet.Mode.CUBIC_BEZIER
             color = Color.parseColor("#2ABFBF")
@@ -199,6 +224,8 @@ class AnalyticsFragment : Fragment() {
             setDrawFilled(true)
             fillDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.budget_progress_drawable)
             setDrawHorizontalHighlightIndicator(false)
+            setDrawVerticalHighlightIndicator(true)
+            highLightColor = Color.parseColor("#2ABFBF")
         }
 
         binding.lineChart.data = LineData(dataSet)
@@ -221,6 +248,12 @@ class AnalyticsFragment : Fragment() {
             chart.clear()
             return
         }
+
+        // Set Marker
+        val marker = CustomMarkerView(requireContext(), R.layout.layout_chart_marker)
+        marker.chartView = chart
+        chart.marker = marker
+
         val dataSet = PieDataSet(entries, "").apply {
             colors = listOf(
                 Color.parseColor("#2ABFBF"),
@@ -276,8 +309,47 @@ class AnalyticsFragment : Fragment() {
                 cellBinding.tvDate.setTextColor(Color.parseColor("#1A1A2E"))
             }
 
+            cellBinding.root.setOnClickListener {
+                val total = if (index < currentHeatmapTotals.size) currentHeatmapTotals[index] else 0f
+                showHeatmapMarker(cellBinding.root, dayOfMonth, total)
+            }
+
             binding.heatmapGrid.addView(cellBinding.root)
         }
+    }
+
+    private fun showHeatmapMarker(anchorView: View, day: Int, amount: Float) {
+        val markerView = LayoutInflater.from(requireContext()).inflate(R.layout.layout_chart_marker, null)
+        val tvTitle = markerView.findViewById<TextView>(R.id.tvMarkerTitle)
+        val tvValue = markerView.findViewById<TextView>(R.id.tvMarkerValue)
+
+        tvTitle.text = "Day $day"
+        tvValue.text = "₹${String.format("%.2f", amount)}"
+
+        val popup = android.widget.PopupWindow(
+            markerView,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            true
+        )
+
+        popup.elevation = 10f
+        popup.overlapAnchor = true
+
+        // Show above the anchor
+        markerView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+        val xOffset = (anchorView.width - markerView.measuredWidth) / 2
+        // Since overlapAnchor is true, yOffset starts from top of anchor
+        val yOffset = -markerView.measuredHeight - 10
+
+        popup.showAsDropDown(anchorView, xOffset, yOffset)
+
+        // Auto-hide after some time
+        anchorView.postDelayed({
+            if (popup.isShowing) {
+                popup.dismiss()
+            }
+        }, 3000)
     }
 
     override fun onDestroyView() {

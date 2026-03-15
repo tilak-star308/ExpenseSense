@@ -14,4 +14,9 @@ class TransactionRepository(private val transactionDao: TransactionDao) {
         withContext(Dispatchers.IO) {
             transactionDao.getTransactionsInRange(startTime, endTime)
         }
+
+    suspend fun getFirstTransactionTimestamp(): Long? =
+        withContext(Dispatchers.IO) {
+            transactionDao.getFirstTransactionTimestamp()
+        }
 }
