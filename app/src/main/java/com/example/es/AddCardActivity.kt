@@ -36,7 +36,12 @@ class AddCardActivity : AppCompatActivity() {
         setContentView(R.layout.activity_add_card)
 
         val database = AppDatabase.getDatabase(this)
-        cardRepository = CardRepository(database.cardDao(), database.accountDao())
+        cardRepository = CardRepository(
+            database.debitCardDao(),
+            database.creditCardDao(),
+            database.accountDao(),
+            database.cardDao()
+        )
         accountRepository = AccountRepository(database.accountDao())
 
         btnBack = findViewById(R.id.btnBack)
@@ -78,8 +83,9 @@ class AddCardActivity : AppCompatActivity() {
 
         // Check for Edit Mode
         editingCardId = intent.getIntExtra(EXTRA_CARD_ID, 0)
+        val cardType = intent.getStringExtra("extra_card_type")
         if (editingCardId != 0) {
-            loadCardData(editingCardId)
+            loadCardData(editingCardId, cardType)
             btnSaveCard.text = "Update Card"
             findViewById<TextView>(R.id.headerTitle)?.text = "Edit Card"
         } else if (intent.getBooleanExtra("isScan", false)) {
@@ -119,43 +125,34 @@ class AddCardActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadCardData(id: Int) {
-        cardRepository.getCardById(id) { card ->
-            if (card != null) {
-                runOnUiThread {
-                    etCardHolderName.setText(card.cardHolderName)
-                    etCardNumber.setText(card.cardNumber)
-                    etCardName.setText(card.cardName)
-                    
-                    val typeAdapter = spinnerCardType.adapter
-                    if (typeAdapter != null) {
-                        for (i in 0 until typeAdapter.count) {
-                            if (typeAdapter.getItem(i).toString().contains(card.cardType, ignoreCase = true)) {
-                                spinnerCardType.setSelection(i)
-                                break
-                            }
-                        }
+    private fun loadCardData(id: Int, type: String?) {
+        if (type == "Credit") {
+            cardRepository.getCreditCardById(id) { card ->
+                if (card != null) {
+                    runOnUiThread {
+                        etCardHolderName.setText(card.cardHolderName ?: "")
+                        etCardNumber.setText(card.cardNumber ?: "")
+                        etCardName.setText(card.cardName ?: "")
+                        spinnerCardType.setSelection(1) // Credit Card
+                        etCreditLimit.setText(card.totalLimit?.toString() ?: "0.0")
+                        etAvailableLimit.setText(card.availableLimit?.toString() ?: "0.0")
                     }
-
-                    if (card.cardType == "Credit") {
-                        etCreditLimit.setText(card.creditLimit?.toString() ?: "0")
-                        etAvailableLimit.setText(card.availableLimit?.toString() ?: "0")
-                    } else {
+                }
+            }
+        } else {
+            cardRepository.getDebitCardById(id) { card ->
+                if (card != null) {
+                    runOnUiThread {
+                        etCardHolderName.setText(card.cardHolderName ?: "")
+                        etCardNumber.setText(card.cardNumber ?: "")
+                        etCardName.setText(card.cardName ?: "")
+                        spinnerCardType.setSelection(0) // Debit Card
                         cbAddBankAccount.visibility = View.GONE
                         layoutNewAccount.visibility = View.VISIBLE
-                        accountRepository.getAccountByName(card.accountName ?: card.cardName) { account ->
+                        accountRepository.getAccountByName(card.bankName ?: "") { account ->
                             if (account != null) {
                                 runOnUiThread {
                                     etAccountBalance.setText(account.balance.toString())
-                                    val accTypeAdapter = spinnerAccountType.adapter
-                                    if (accTypeAdapter != null && account.type != null) {
-                                        for (i in 0 until accTypeAdapter.count) {
-                                            if (accTypeAdapter.getItem(i).toString().equals(account.type, ignoreCase = true)) {
-                                                spinnerAccountType.setSelection(i)
-                                                break
-                                            }
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -168,7 +165,8 @@ class AddCardActivity : AppCompatActivity() {
     private fun saveCard() {
         val holder = etCardHolderName.text.toString().trim()
         val number = etCardNumber.text.toString().trim()
-        val name = etCardName.text.toString().trim()
+        val rawName = etCardName.text.toString().trim()
+        val name = rawName.replace(Regex("[.#$\\[\\]/]"), "_") // Sanitize for Firebase Key
         val type = spinnerCardType.selectedItem.toString()
 
         if (holder.isEmpty() || number.isEmpty() || name.isEmpty()) {
@@ -176,19 +174,22 @@ class AddCardActivity : AppCompatActivity() {
             return
         }
 
+        val last4 = if (number.length >= 4) number.takeLast(4) else number
+
         if (type == "Credit Card") {
             val limit = etCreditLimit.text.toString().toDoubleOrNull() ?: 0.0
             val available = etAvailableLimit.text.toString().toDoubleOrNull() ?: 0.0
-            val card = Card(
+            val card = CreditCard(
                 id = editingCardId,
                 cardHolderName = holder,
                 cardNumber = number,
                 cardName = name,
-                cardType = "Credit",
-                creditLimit = limit,
+                bankName = rawName.split(" ").first(),
+                last4Digits = last4,
+                totalLimit = limit,
                 availableLimit = available
             )
-            cardRepository.saveCard(card) { success ->
+            cardRepository.saveCreditCard(card) { success ->
                 runOnUiThread {
                     if (success) {
                         Toast.makeText(this, if (editingCardId == 0) "Credit Card Saved" else "Credit Card Updated", Toast.LENGTH_SHORT).show()
@@ -199,54 +200,40 @@ class AddCardActivity : AppCompatActivity() {
                 }
             }
         } else {
-            // Debit Card Logic
-            val bankName = name.split(" ").firstOrNull()?.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } ?: name
+            val bankName = rawName.split(" ").firstOrNull()?.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } ?: rawName
             
-            if (editingCardId != 0) {
-                val balance = etAccountBalance.text.toString().toDoubleOrNull() ?: 0.0
-                accountRepository.setAccountBalance(bankName, balance) {
-                    saveDebitCardOnly(holder, number, name, bankName)
-                }
-            } else {
-                cardRepository.checkAccountExists(bankName) { exists ->
-                    if (exists) {
-                        saveDebitCardOnly(holder, number, name, bankName)
-                    } else {
-                        saveDebitCardWithAccount(holder, number, name, bankName)
+            val saveAction = {
+                val card = DebitCard(
+                    id = editingCardId,
+                    cardHolderName = holder,
+                    cardNumber = number,
+                    cardName = name,
+                    bankName = bankName,
+                    last4Digits = last4,
+                    linkedBankAccountId = bankName
+                )
+                cardRepository.saveDebitCard(card) { success ->
+                    runOnUiThread {
+                        if (success) {
+                            Toast.makeText(this, if (editingCardId == 0) "Debit Card Saved" else "Debit Card Updated", Toast.LENGTH_SHORT).show()
+                            finish()
+                        } else {
+                            Toast.makeText(this, "Error saving card", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             }
-        }
-    }
 
-    private fun saveDebitCardOnly(holder: String, number: String, name: String, bankName: String) {
-        val card = Card(
-            id = editingCardId,
-            cardHolderName = holder,
-            cardNumber = number,
-            cardName = name,
-            cardType = "Debit",
-            accountName = bankName
-        )
-        cardRepository.saveCard(card) { success ->
-            runOnUiThread {
-                if (success) {
-                    Toast.makeText(this, if (editingCardId == 0) "Debit Card Saved" else "Debit Card Updated", Toast.LENGTH_SHORT).show()
-                    finish()
-                } else {
-                    Toast.makeText(this, "Error saving card", Toast.LENGTH_SHORT).show()
+            if (cbAddBankAccount.isChecked) {
+                val balance = etAccountBalance.text.toString().toDoubleOrNull() ?: 0.0
+                val accType = spinnerAccountType.selectedItem.toString()
+                val account = Account(name = bankName, type = accType, balance = balance)
+                accountRepository.saveAccount(account) {
+                    saveAction()
                 }
+            } else {
+                saveAction()
             }
-        }
-    }
-
-    private fun saveDebitCardWithAccount(holder: String, number: String, name: String, bankName: String) {
-        val balance = etAccountBalance.text.toString().toDoubleOrNull() ?: 0.0
-        val accType = spinnerAccountType.selectedItem.toString()
-        val account = Account(name = bankName, type = accType, balance = balance)
-        
-        accountRepository.saveAccount(account) {
-            saveDebitCardOnly(holder, number, name, bankName)
         }
     }
 }

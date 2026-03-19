@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.ItemTouchHelper
 import android.graphics.Canvas
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -63,20 +64,58 @@ class WalletCardsFragment : Fragment() {
         scanResultLauncher.launch(intent)
     }
 
+    private lateinit var layoutEmptyState: View
+    private lateinit var btnEmptyAddCard: com.google.android.material.button.MaterialButton
+    private lateinit var cardViewModel: CardViewModel
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-
+        android.util.Log.d("DEBUG_LIFECYCLE", "WalletCardsFragment onCreateView")
         val view = inflater.inflate(R.layout.fragment_wallet_cards, container, false)
 
         rvCards = view.findViewById(R.id.rvCards)
         fabAddCard = view.findViewById(R.id.fabAddCard)
         fabScanCard = view.findViewById(R.id.fabScanCard)
+        layoutEmptyState = view.findViewById(R.id.layoutEmptyState)
+        btnEmptyAddCard = view.findViewById(R.id.btnEmptyAddCard)
 
         val database = AppDatabase.getDatabase(requireContext())
-        cardRepository = CardRepository(database.cardDao(), database.accountDao())
+        cardRepository = CardRepository(
+            database.debitCardDao(),
+            database.creditCardDao(),
+            database.accountDao(),
+            database.cardDao()
+        )
         accountRepository = AccountRepository(database.accountDao())
+
+        // Initialize ViewModel
+        val factory = CardViewModelFactory(cardRepository)
+        cardViewModel = androidx.lifecycle.ViewModelProvider(this, factory).get(CardViewModel::class.java)
+
+        // Observe Cards from ViewModel
+        cardViewModel.cards.observe(viewLifecycleOwner) { list ->
+            android.util.Log.d("DEBUG_UI", "Cards received in UI: ${list.size}")
+            
+            lifecycleScope.launch {
+                val accounts = withContext(Dispatchers.IO) {
+                    database.accountDao().getAllAccounts()
+                }
+                val balances = accounts.associate { it.name to it.balance }
+                
+                withContext(Dispatchers.Main) {
+                    if (list.isEmpty()) {
+                        rvCards.visibility = View.GONE
+                        layoutEmptyState.visibility = View.VISIBLE
+                    } else {
+                        rvCards.visibility = View.VISIBLE
+                        layoutEmptyState.visibility = View.GONE
+                        cardAdapter.updateData(list, balances)
+                    }
+                }
+            }
+        }
 
         stackedLayoutManager = StackedLayoutManager(collapsedOffset = 180)
         rvCards.layoutManager = stackedLayoutManager
@@ -84,13 +123,14 @@ class WalletCardsFragment : Fragment() {
         cardAdapter = CardAdapter(
             emptyList(),
             emptyMap(),
-            onEdit = { card ->
+            onEdit = { model ->
                 val intent = Intent(requireContext(), AddCardActivity::class.java)
-                intent.putExtra(AddCardActivity.EXTRA_CARD_ID, card.id)
+                intent.putExtra(AddCardActivity.EXTRA_CARD_ID, model.id)
+                intent.putExtra("extra_card_type", if (model is CardUIModel.Credit) "Credit" else "Debit")
                 startActivity(intent)
             },
-            onDelete = { card ->
-                showDeleteConfirmation(card)
+            onDelete = { model ->
+                showDeleteConfirmation(model)
             }
         )
 
@@ -101,6 +141,10 @@ class WalletCardsFragment : Fragment() {
             ?.supportsChangeAnimations = false
 
         fabAddCard.setOnClickListener {
+            startActivity(Intent(requireContext(), AddCardActivity::class.java))
+        }
+
+        btnEmptyAddCard.setOnClickListener {
             startActivity(Intent(requireContext(), AddCardActivity::class.java))
         }
 
@@ -118,29 +162,33 @@ class WalletCardsFragment : Fragment() {
 
         setupGesturesAndAnimations()
 
+        // Trigger Cleanup of root level cards node per strict rule
+        cardRepository.cleanupRootCards()
+
         return view
     }
 
     override fun onResume() {
+        android.util.Log.d("DEBUG_LIFECYCLE", "WalletCardsFragment onResume")
         super.onResume()
         loadCards()
     }
 
     private fun loadCards() {
-        lifecycleScope.launch {
+        android.util.Log.d("DEBUG_LIFECYCLE", "WalletCardsFragment loadCards called")
+        val user = FirebaseAuth.getInstance().currentUser
+        val email = user?.email
+        val username = email?.substringBefore("@")?.replace(".", "_") ?: ""
+        android.util.Log.d("DEBUG_LIFECYCLE", "Username resolved: '$username'")
 
-            val cards = withContext(Dispatchers.IO) {
-                AppDatabase.getDatabase(requireContext()).cardDao().getAllCards()
-            }
-
-            val accounts = withContext(Dispatchers.IO) {
-                AppDatabase.getDatabase(requireContext()).accountDao().getAllAccounts()
-            }
-
-            val balances = accounts.associate { it.name to it.balance }
-
-            cardAdapter.updateData(cards, balances)
+        if (username.isEmpty()) {
+            android.util.Log.e("DEBUG_LIFECYCLE", "FAILURE: Username is empty. User not logged in?")
+            return
         }
+
+        // Directly trigger ViewModel — it handles background work internally
+        android.util.Log.d("DEBUG_LIFECYCLE", "Calling cardViewModel.loadCards()")
+        cardViewModel.loadCards()
     }
 
     private fun setupGesturesAndAnimations() {
@@ -302,26 +350,24 @@ class WalletCardsFragment : Fragment() {
         }
     }
 
-    private fun openCardFullscreen(card: Card, cardView: View) {
-
-        val tvBalance: android.widget.TextView =
-            cardView.findViewById(R.id.tvBalanceDisplay)
-
+    private fun openCardFullscreen(model: CardUIModel, cardView: View) {
+        val tvBalance: android.widget.TextView = cardView.findViewById(R.id.tvBalanceDisplay)
         val balanceStr = tvBalance.text.toString()
 
         (activity as? MainActivity)?.showCardFocus(
             cardView,
-            card,
+            model,
             balanceStr,
             onEdit = {
                 val intent = Intent(requireContext(), AddCardActivity::class.java)
-                intent.putExtra(AddCardActivity.EXTRA_CARD_ID, card.id)
+                intent.putExtra(AddCardActivity.EXTRA_CARD_ID, model.id)
+                intent.putExtra("extra_card_type", if (model is CardUIModel.Credit) "Credit" else "Debit")
                 startActivity(intent)
             },
             onDelete = {
-                // Immediate UI removal for zero latency premium feel
+                // Immediate UI removal
                 val currentCards = cardAdapter.getCards()
-                val pos = currentCards.indexOfFirst { it.id == card.id }
+                val pos = currentCards.indexOfFirst { it.id == model.id && it.javaClass == model.javaClass }
                 if (pos != -1) {
                     val newList = currentCards.toMutableList()
                     newList.removeAt(pos)
@@ -330,11 +376,12 @@ class WalletCardsFragment : Fragment() {
 
                 // Background database deletion
                 lifecycleScope.launch(Dispatchers.IO) {
-                    cardRepository.deleteCard(card) { success ->
-                        if (!success) {
-                            // If deletion failed, we should probably reload to restore state
-                            launch(Dispatchers.Main) { loadCards() }
-                        }
+                    val callback: (Boolean) -> Unit = { success ->
+                        if (!success) launch(Dispatchers.Main) { loadCards() }
+                    }
+                    when (model) {
+                        is CardUIModel.Debit -> cardRepository.deleteDebitCard(model.card, callback)
+                        is CardUIModel.Credit -> cardRepository.deleteCreditCard(model.card, callback)
                     }
                 }
             }
@@ -342,38 +389,37 @@ class WalletCardsFragment : Fragment() {
     }
 
     private fun saveCardOrder() {
-
-        val cards = cardAdapter.getCards()
+        val models = cardAdapter.getCards()
+        val db = AppDatabase.getDatabase(requireContext())
 
         lifecycleScope.launch(Dispatchers.IO) {
-
-            cards.forEachIndexed { index, card ->
-
-                val updatedCard = card.copy(orderIndex = index)
-
-                AppDatabase
-                    .getDatabase(requireContext())
-                    .cardDao()
-                    .updateCard(updatedCard)
+            models.forEachIndexed { index, model ->
+                when (model) {
+                    is CardUIModel.Debit -> {
+                        val updated = model.card.copy(orderIndex = index)
+                        db.debitCardDao().updateDebitCard(updated)
+                    }
+                    is CardUIModel.Credit -> {
+                        val updated = model.card.copy(orderIndex = index)
+                        db.creditCardDao().updateCreditCard(updated)
+                    }
+                }
             }
         }
     }
 
-    private fun showDeleteConfirmation(card: Card) {
-
+    private fun showDeleteConfirmation(model: CardUIModel) {
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
             .setTitle("Delete Card")
             .setMessage("Are you sure you want to delete this card?")
             .setPositiveButton("Delete") { _, _ ->
-
                 lifecycleScope.launch(Dispatchers.IO) {
-
-                    cardRepository.deleteCard(card) { success ->
-
+                    val callback: (Boolean) -> Unit = { success ->
                         if (success) {
-                            launch(Dispatchers.Main) { 
+                            launch(Dispatchers.Main) {
+
                                 val currentCards = cardAdapter.getCards()
-                                val pos = currentCards.indexOfFirst { it.id == card.id }
+                                val pos = currentCards.indexOfFirst { it.id == model.id && it.javaClass == model.javaClass }
                                 if (pos != -1) {
                                     val newList = currentCards.toMutableList()
                                     newList.removeAt(pos)
@@ -381,6 +427,10 @@ class WalletCardsFragment : Fragment() {
                                 }
                             }
                         }
+                    }
+                    when (model) {
+                        is CardUIModel.Debit -> cardRepository.deleteDebitCard(model.card, callback)
+                        is CardUIModel.Credit -> cardRepository.deleteCreditCard(model.card, callback)
                     }
                 }
             }

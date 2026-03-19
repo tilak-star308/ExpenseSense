@@ -47,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        android.util.Log.d("DEBUG_APP", "MainActivity onCreate started")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -231,6 +232,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadFragment(fragment: Fragment) {
+        android.util.Log.d("DEBUG_APP", "MainActivity loadFragment: ${fragment::class.java.simpleName}")
         addExpenseAction = null // Reset custom FAB action on page change
         supportFragmentManager.beginTransaction()
             .setCustomAnimations(
@@ -277,7 +279,7 @@ class MainActivity : AppCompatActivity() {
     /**
      * Shows a 3D focused card above a global blur/dim overlay using a cloning approach
      */
-    fun showCardFocus(cardView: View, card: Card, balanceDisplay: String, onEdit: () -> Unit, onDelete: () -> Unit) {
+    fun showCardFocus(cardView: View, model: CardUIModel?, balanceDisplay: String, onEdit: () -> Unit, onDelete: () -> Unit) {
         if (clonedCardView != null) return
 
         originalCardView = cardView
@@ -299,22 +301,27 @@ class MainActivity : AppCompatActivity() {
         val clone = inflater.inflate(R.layout.item_card, focusedCardContainer, false)
         clonedCardView = clone
 
-        // Bind data to clone (Mirroring CardAdapter logic)
+        // Bind data to clone
         val ivCardBg: android.widget.ImageView = clone.findViewById(R.id.ivCardBg)
         val tvCardName: android.widget.TextView = clone.findViewById(R.id.tvCardNameDisplay)
         val tvCardNumber: android.widget.TextView = clone.findViewById(R.id.tvCardNumberDisplay)
         val tvCardHolder: android.widget.TextView = clone.findViewById(R.id.tvCardHolderDisplay)
         val tvBalance: android.widget.TextView = clone.findViewById(R.id.tvBalanceDisplay)
 
-        if (card.cardType == "Credit") {
-            ivCardBg.setImageResource(R.drawable.defaultcreditcard)
+        if (model != null) {
+            if (model is CardUIModel.Credit) {
+                ivCardBg.setImageResource(R.drawable.defaultcreditcard)
+            } else {
+                ivCardBg.setImageResource(R.drawable.defaultdebitcard)
+            }
+            tvBalance.text = balanceDisplay
+            tvCardName.text = model.cardName
+            tvCardNumber.text = maskCardNumber(model.cardNumber)
+            tvCardHolder.text = model.cardHolderName.uppercase()
         } else {
-            ivCardBg.setImageResource(R.drawable.defaultdebitcard)
+            // Fallback just in case
+            tvBalance.text = balanceDisplay
         }
-        tvBalance.text = balanceDisplay
-        tvCardName.text = card.cardName
-        tvCardNumber.text = maskCardNumber(card.cardNumber)
-        tvCardHolder.text = card.cardHolderName.uppercase()
 
         // Position clone at original orientation (for animation start)
         val lp = android.widget.FrameLayout.LayoutParams(cardView.width, cardView.height)
