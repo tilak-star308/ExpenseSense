@@ -18,4 +18,7 @@ interface CardDao {
 
     @Delete
     fun deleteCard(card: Card)
+
+    @Query("DELETE FROM cards")
+    fun deleteAllCards()
 }

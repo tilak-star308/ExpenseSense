@@ -26,8 +26,14 @@ class AddExpenseActivity : AppCompatActivity() {
     private lateinit var tvClear: TextView
     private lateinit var layoutDate: RelativeLayout
     private lateinit var spinnerCategory: Spinner
-    private lateinit var spinnerAccount: Spinner
+    private lateinit var chipGroupPaymentMethod: com.google.android.material.chip.ChipGroup
+    private lateinit var layoutDynamicSelector: LinearLayout
+    private lateinit var tvSelectorLabel: TextView
+    private lateinit var spinnerDynamic: Spinner
     private lateinit var btnAddExpense: MaterialButton
+
+    private lateinit var paymentRepository: PaymentRepository
+    private lateinit var cardRepository: CardRepository
 
     private val calendar = Calendar.getInstance()
     private lateinit var budgetRepository: BudgetRepository
@@ -40,6 +46,20 @@ class AddExpenseActivity : AppCompatActivity() {
         val database = AppDatabase.getDatabase(this)
         budgetRepository = BudgetRepository(database.budgetDao(), database.transactionDao())
         accountRepository = AccountRepository(database.accountDao())
+        cardRepository = CardRepository(
+            database.debitCardDao(),
+            database.creditCardDao(),
+            database.accountDao(),
+            database.cardDao()
+        )
+        paymentRepository = PaymentRepository(
+            database,
+            database.transactionDao(),
+            database.accountDao(),
+            database.debitCardDao(),
+            database.creditCardDao(),
+            database.budgetDao()
+        )
 
         btnBack       = findViewById(R.id.btnBack)
         etName        = findViewById(R.id.etName)
@@ -48,7 +68,13 @@ class AddExpenseActivity : AppCompatActivity() {
         tvClear       = findViewById(R.id.tvClear)
         layoutDate    = findViewById(R.id.layoutDate)
         spinnerCategory = findViewById(R.id.spinnerCategory)
-        spinnerAccount  = findViewById(R.id.spinnerAccount)
+        
+        // Payment Method Views
+        chipGroupPaymentMethod = findViewById(R.id.chipGroupPaymentMethod)
+        layoutDynamicSelector  = findViewById(R.id.layoutDynamicSelector)
+        tvSelectorLabel        = findViewById(R.id.tvSelectorLabel)
+        spinnerDynamic         = findViewById(R.id.spinnerDynamic)
+        
         btnAddExpense = findViewById(R.id.btnAddExpense)
 
         // Populate category spinner
@@ -59,15 +85,13 @@ class AddExpenseActivity : AppCompatActivity() {
             categories
         ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
 
-        // Populate account spinner
-        accountRepository.getAllAccounts { accounts ->
-            runOnUiThread {
-                val accountNames = accounts.map { it.name }
-                val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, accountNames)
-                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                spinnerAccount.adapter = adapter
-            }
+        // Setup Payment Method Selection
+        chipGroupPaymentMethod.setOnCheckedChangeListener { group, checkedId ->
+            handlePaymentMethodChange(checkedId)
         }
+        
+        // Initialize default state
+        handlePaymentMethodChange(R.id.chipCash)
 
         // Pre-fill today's date
         updateDateLabel()
@@ -118,6 +142,56 @@ class AddExpenseActivity : AppCompatActivity() {
         tvDate.text = sdf.format(calendar.time)
     }
 
+    private fun handlePaymentMethodChange(chipId: Int) {
+        when (chipId) {
+            R.id.chipCash -> {
+                layoutDynamicSelector.visibility = View.GONE
+            }
+            R.id.chipUPI -> {
+                layoutDynamicSelector.visibility = View.VISIBLE
+                tvSelectorLabel.text = "SELECT BANK"
+                loadAccounts()
+            }
+            R.id.chipDebit -> {
+                layoutDynamicSelector.visibility = View.VISIBLE
+                tvSelectorLabel.text = "SELECT DEBIT CARD"
+                loadCards("Debit")
+            }
+            R.id.chipCredit -> {
+                layoutDynamicSelector.visibility = View.VISIBLE
+                tvSelectorLabel.text = "SELECT CREDIT CARD"
+                loadCards("Credit")
+            }
+        }
+    }
+
+    private fun loadAccounts() {
+        accountRepository.getAllAccounts { accounts ->
+            val filtered = accounts.filter { it.name != "Cash" }
+            runOnUiThread {
+                val names = filtered.map { it.name }
+                val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, names)
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                spinnerDynamic.adapter = adapter
+            }
+        }
+    }
+
+    private fun loadCards(type: String) {
+        cardRepository.getAllCards { debits, credits ->
+            val names = if (type == "Debit") {
+                debits.map { it.cardName }
+            } else {
+                credits.map { it.cardName }
+            }
+            runOnUiThread {
+                val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, names)
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                spinnerDynamic.adapter = adapter
+            }
+        }
+    }
+
     private fun submitExpense() {
         val name   = etName.text.toString().trim()
         val amtStr = etAmount.text.toString().trim()
@@ -139,76 +213,56 @@ class AddExpenseActivity : AppCompatActivity() {
             return
         }
 
+        val paymentMethod = when (chipGroupPaymentMethod.checkedChipId) {
+            R.id.chipCash -> "Cash"
+            R.id.chipUPI -> "UPI"
+            R.id.chipDebit -> "Debit Card"
+            R.id.chipCredit -> "Credit Card"
+            else -> "Cash"
+        }
+
+        val referenceId = spinnerDynamic.selectedItem?.toString()
+        if (paymentMethod != "Cash" && referenceId == null) {
+            Toast.makeText(this, "Please select a ${tvSelectorLabel.text}", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val user = FirebaseAuth.getInstance().currentUser
         if (user == null || user.email == null) {
-            Toast.makeText(this, "Not logged in or missing email", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
             return
         }
 
         val username  = user.email!!.substringBefore("@")
         val category  = spinnerCategory.selectedItem?.toString() ?: "other"
-        val account   = spinnerAccount.selectedItem?.toString() ?: "Cash"
         val timestamp = calendar.timeInMillis
+        val sanctionedName = name.replace(Regex("[.#$\\[\\]/]"), "-")
+        val uniqueTitleKey = "$sanctionedName-$timestamp"
 
-        // Sanitize name for Firebase key (illegal: . $ [ ] # /)
-        val sanitizedName = name.replace(Regex("[.#$\\[\\]/]"), "-")
-        val uniqueTitleKey = "$sanitizedName-$timestamp"
-
-        val databaseRef = FirebaseDatabase.getInstance()
-            .getReference("users/$username/expenses/$category/$uniqueTitleKey")
-        
-        val firebaseExpenseData = mapOf(
-            "timestamp" to timestamp,
-            "amount" to amount,
-            "account" to account
-        )
-
-        // The local Room DB object (keeps all fields for UI rendering)
         val transaction = Transaction(
-            title      = name,    // The clean title for the UI
+            title      = name,
             amount     = amount,
             category   = category,
-            accountName = account,
+            accountName = referenceId ?: "Cash",
             timestamp  = timestamp,
-            firebaseId = uniqueTitleKey // We store the unique key so we can delete it later
+            paymentMethod = paymentMethod,
+            referenceId = referenceId,
+            firebaseId = uniqueTitleKey
         )
 
-        // Save to Firebase with listeners to catch errors
-        databaseRef.setValue(firebaseExpenseData)
-            .addOnSuccessListener {
-                // Deduct from budget and account
-                val monthYear = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(timestamp))
-                budgetRepository.deductFromBudget(monthYear, amount)
-                accountRepository.updateBalance(account, -amount)
-
-                // Save to Room on background thread, then close activity
-                Thread {
-                    AppDatabase.getDatabase(this@AddExpenseActivity)
-                        .transactionDao()
-                        .insertTransaction(transaction)
-                    runOnUiThread {
-                        Toast.makeText(this@AddExpenseActivity, "Expense Saved", Toast.LENGTH_SHORT).show()
-                        finish()
-                    }
-                }.start()
+        btnAddExpense.isEnabled = false
+        
+        paymentRepository.saveExpense(transaction, paymentMethod, referenceId, username) { success, error ->
+            runOnUiThread {
+                btnAddExpense.isEnabled = true
+                if (success) {
+                    Toast.makeText(this@AddExpenseActivity, "Expense Saved", Toast.LENGTH_SHORT).show()
+                    finish()
+                } else {
+                    Toast.makeText(this@AddExpenseActivity, "Error: $error", Toast.LENGTH_LONG).show()
+                }
             }
-            .addOnFailureListener { exception ->
-                Toast.makeText(this, "Firebase Error: ${exception.message}", Toast.LENGTH_LONG).show()
-                
-                // Still deduct from budget and account locally
-                val monthYear = SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date(timestamp))
-                budgetRepository.deductFromBudget(monthYear, amount)
-                accountRepository.updateBalance(account, -amount)
-
-                // Still save to Room so data isn't lost
-                Thread {
-                    AppDatabase.getDatabase(this@AddExpenseActivity)
-                        .transactionDao()
-                        .insertTransaction(transaction)
-                    runOnUiThread {
-                        finish()
-                    }
-                }.start()
-            }
+        }
     }
 }
+

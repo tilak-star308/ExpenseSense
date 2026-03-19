@@ -32,10 +32,12 @@ class WalletFragment : Fragment() {
         // Start with Accounts by default as per user request (showing the UI) 
         // Or Cards first? User said "implement navigation as shown in image", usually Cards is first.
         // But the user focused on Accounts UI. Let's go with Accounts as active by default to show my work.
-        switchTab(false)
+        // Default to Cards tab for debugging card visibility
+        switchTab(true)
     }
 
     private fun switchTab(isCards: Boolean) {
+        android.util.Log.d("DEBUG_TAB", "WalletFragment switchTab: isCards=$isCards")
         // Update Buttons UI
         btnTabCards.background = ContextCompat.getDrawable(
             requireContext(),

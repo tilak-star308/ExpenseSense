@@ -7,14 +7,13 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
 class CardAdapter(
-    private var cards: List<Card>,
+    private var cards: List<CardUIModel>,
     private var accountBalances: Map<String, Double>,
-    private val onEdit: (Card) -> Unit,
-    private val onDelete: (Card) -> Unit
+    private val onEdit: (CardUIModel) -> Unit,
+    private val onDelete: (CardUIModel) -> Unit
 ) : RecyclerView.Adapter<CardAdapter.CardViewHolder>() {
 
-    private var onItemClickListener: ((Card, View) -> Unit)? = null
-
+    private var onItemClickListener: ((CardUIModel, View) -> Unit)? = null
 
     class CardViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val ivCardBg: android.widget.ImageView = view.findViewById(R.id.ivCardBg)
@@ -26,44 +25,45 @@ class CardAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CardViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_card, parent, false)
-        // Set camera distance for better 3D tilt effect
         val density = parent.resources.displayMetrics.density
         view.cameraDistance = 8000 * density
         return CardViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: CardViewHolder, position: Int) {
-        val card = cards[position]
+        val model = cards[position]
         
         holder.itemView.alpha = 1f
         holder.itemView.setOnClickListener {
-            onItemClickListener?.invoke(card, it)
+            onItemClickListener?.invoke(model, it)
         }
         
-        // Dynamic Background
-        if (card.cardType == "Credit") {
-            holder.ivCardBg.setImageResource(R.drawable.defaultcreditcard)
-            holder.tvBalance.text = "Avl: ₹${String.format("%.2f", card.availableLimit ?: 0.0)}"
-        } else {
-            holder.ivCardBg.setImageResource(R.drawable.defaultdebitcard)
-            val balance = accountBalances[card.accountName] ?: 0.0
-            holder.tvBalance.text = "Bal: ₹${String.format("%.2f", balance)}"
+        when (model) {
+            is CardUIModel.Credit -> {
+                holder.ivCardBg.setImageResource(R.drawable.defaultcreditcard)
+                holder.tvBalance.text = "Avl: ₹${String.format("%.2f", model.availableLimit)}"
+            }
+            is CardUIModel.Debit -> {
+                holder.ivCardBg.setImageResource(R.drawable.defaultdebitcard)
+                val balance = accountBalances[model.linkedBankAccountId] ?: 0.0
+                holder.tvBalance.text = "Bal: ₹${String.format("%.2f", balance)}"
+            }
         }
 
-        holder.tvCardName.text = card.cardName
-        holder.tvCardNumber.text = maskCardNumber(card.cardNumber)
-        holder.tvCardHolder.text = card.cardHolderName.uppercase()
+        holder.tvCardName.text = model.cardName
+        holder.tvCardNumber.text = maskCardNumber(model.cardNumber)
+        holder.tvCardHolder.text = model.cardHolderName.uppercase()
     }
 
     override fun getItemCount() = cards.size
 
-    fun setOnItemClickListener(listener: (Card, View) -> Unit) {
+    fun setOnItemClickListener(listener: (CardUIModel, View) -> Unit) {
         onItemClickListener = listener
     }
 
-    fun getCards(): List<Card> = cards
+    fun getCards(): List<CardUIModel> = cards
 
-    fun updateData(newCards: List<Card>, newBalances: Map<String, Double>? = null) {
+    fun updateData(newCards: List<CardUIModel>, newBalances: Map<String, Double>? = null) {
         if (newBalances != null) {
             accountBalances = newBalances
         }
@@ -71,10 +71,9 @@ class CardAdapter(
         val oldCards = this.cards
         this.cards = newCards
 
-        // Use basic diffing or just notifyItemRemoved if the list size decreased by one
         if (oldCards.size == newCards.size + 1) {
             val removedIndex = oldCards.indexOfFirst { oldCard -> 
-                newCards.none { it.id == oldCard.id } 
+                newCards.none { it.id == oldCard.id && it.javaClass == oldCard.javaClass } 
             }
             if (removedIndex != -1) {
                 notifyItemRemoved(removedIndex)
@@ -92,7 +91,7 @@ class CardAdapter(
         return "**** **** **** $lastFour"
     }
 
-    fun getCardAt(position: Int): Card {
+    fun getCardAt(position: Int): CardUIModel {
         return cards[position]
     }
 }

@@ -330,26 +330,98 @@
                         android:entries="@array/transaction_categories" />
                     <!-- └─────────────────────────────────────────────┘ -->
 
-                    <!-- ┌─ ACCOUNT ──────────────────────────────────┐ -->
+                    <!-- ┌─ PAYMENT METHOD ──────────────────────────────┐ -->
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="20dp"
                         android:letterSpacing="0.12"
-                        android:text="ACCOUNT"
+                        android:text="PAYMENT METHOD"
                         android:textAllCaps="true"
                         android:textColor="#AAAAAA"
                         android:textSize="10sp"
                         android:textStyle="bold" />
 
-                    <Spinner
-                        android:id="@+id/spinnerAccount"
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chipGroupPaymentMethod"
                         android:layout_width="match_parent"
-                        android:layout_height="52dp"
+                        android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:background="@drawable/bg_field_normal"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="14dp" />
+                        app:singleSelection="true"
+                        app:selectionRequired="true">
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chipCash"
+                            style="@style/Widget.MaterialComponents.Chip.Choice"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Cash"
+                            android:checked="true"
+                            app:chipBackgroundColor="@color/bg_chip_state_list"
+                            app:chipStrokeWidth="0dp"
+                            app:rippleColor="#2ABFBF" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chipUPI"
+                            style="@style/Widget.MaterialComponents.Chip.Choice"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="UPI"
+                            app:chipBackgroundColor="@color/bg_chip_state_list"
+                            app:chipStrokeWidth="0dp"
+                            app:rippleColor="#2ABFBF" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chipDebit"
+                            style="@style/Widget.MaterialComponents.Chip.Choice"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Debit Card"
+                            app:chipBackgroundColor="@color/bg_chip_state_list"
+                            app:chipStrokeWidth="0dp"
+                            app:rippleColor="#2ABFBF" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chipCredit"
+                            style="@style/Widget.MaterialComponents.Chip.Choice"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Credit Card"
+                            app:chipBackgroundColor="@color/bg_chip_state_list"
+                            app:chipStrokeWidth="0dp"
+                            app:rippleColor="#2ABFBF" />
+                    </com.google.android.material.chip.ChipGroup>
+                    <!-- └─────────────────────────────────────────────┘ -->
+
+                    <!-- ┌─ DYNAMIC SELECTOR (BANK/CARD) ──────────────┐ -->
+                    <LinearLayout
+                        android:id="@+id/layoutDynamicSelector"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/tvSelectorLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:letterSpacing="0.12"
+                            android:text="SELECT BANK"
+                            android:textAllCaps="true"
+                            android:textColor="#AAAAAA"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+
+                        <Spinner
+                            android:id="@+id/spinnerDynamic"
+                            android:layout_width="match_parent"
+                            android:layout_height="52dp"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_field_normal"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp" />
+                    </LinearLayout>
                     <!-- └─────────────────────────────────────────────┘ -->
 
                 </LinearLayout>
