@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.es"
+    namespace = "com.amshu.expensesense"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.es"
+        applicationId = "com.amshu.expensesense"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
