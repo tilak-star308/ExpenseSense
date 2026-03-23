@@ -8,8 +8,8 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.example.es" />
-                  <option name="mobileSdkAppId" value="1:556959639139:android:c6d28f61b5465f4e0e7a56" />
+                  <option name="appId" value="com.amshu.expensesense" />
+                  <option name="mobileSdkAppId" value="1:556959639139:android:c60ccbb076ea1de50e7a56" />
                   <option name="projectId" value="snapfine-680ee" />
                   <option name="projectNumber" value="556959639139" />
                 </ConnectionSetting>
