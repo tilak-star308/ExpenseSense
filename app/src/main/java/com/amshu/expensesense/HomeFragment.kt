@@ -32,6 +32,8 @@ import com.google.firebase.database.ValueEventListener
 import android.util.TypedValue
 import androidx.cardview.widget.CardView
 import androidx.core.view.ViewCompat
+import androidx.fragment.app.activityViewModels
+import java.util.stream.Collectors
 
 class HomeFragment : Fragment() {
 
@@ -66,6 +68,7 @@ class HomeFragment : Fragment() {
     private var accountList = mutableListOf<Account>()
     private lateinit var accountAdapter: AccountMiniAdapter
     private lateinit var tvHeaderCashBalance: TextView
+    private val expenseViewModel: ExpenseViewModel by activityViewModels()
 
 
     // Swipe stacks
@@ -116,6 +119,7 @@ class HomeFragment : Fragment() {
 
         rvTransactions.layoutManager = LinearLayoutManager(requireContext())
 
+        setupExpenseViewModel()
         setupBudgetViewModel()
         setupAccountViewModel()
         setupCardViewModel()
@@ -167,6 +171,12 @@ class HomeFragment : Fragment() {
                 }
                 else -> false
             }
+        }
+    }
+
+    private fun setupExpenseViewModel() {
+        expenseViewModel.totalBalance.observe(viewLifecycleOwner) { total ->
+            tvTotal.text = "Total: ₹%.2f".format(total)
         }
     }
 
@@ -594,6 +604,12 @@ class HomeFragment : Fragment() {
                 val limitedList = transactionList.take(5)
                 adapter = TransactionAdapter(limitedList) { deleteTransaction(it) }
                 rvTransactions.adapter = adapter
+
+                // Update Shared ViewModel
+                val expenses = transactionList.map { 
+                    Expense(it.title, it.amount, SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(it.timestamp)))
+                }.toMutableList()
+                expenseViewModel.updateExpenses(expenses)
             }
         }.start()
     }
@@ -610,8 +626,10 @@ class HomeFragment : Fragment() {
                         val dao = AppDatabase.getDatabase(safeContext).transactionDao()
                         val localMap = dao.getAllTransactions().associateBy { it.firebaseId }
                         var hasNew = false
+                        var parsedCount = 0
                         for (categorySnapshot in snapshot.children) {
                             for (expenseSnapshot in categorySnapshot.children) {
+                                parsedCount++
                                 val key = expenseSnapshot.key ?: continue
                                 if (!localMap.containsKey(key)) {
                                     dao.insertTransaction(Transaction(
@@ -685,18 +703,22 @@ class HomeFragment : Fragment() {
                     loadFromRoom()
                     budgetViewModel.loadCurrentMonthBudget()
                     accountViewModel.loadAccounts()
+                    cardViewModel.loadCards()
                 }
             }
     }
 
     private fun updateSummaryViews(records: List<Transaction>) {
-        val total = records.sumOf { it.amount }
+        var total = 0.0
+        for (expense in records) {
+            total += expense.amount
+        }
         val cal = Calendar.getInstance()
         val mTotal = records.filter {
             val c = Calendar.getInstance().apply { timeInMillis = it.timestamp }
             c.get(Calendar.MONTH) == cal.get(Calendar.MONTH) && c.get(Calendar.YEAR) == cal.get(Calendar.YEAR)
         }.sumOf { it.amount }
-        tvTotal.text = "Total: ₹%.2f".format(total)
+        
         tvMonthTotal.text = "This Month: ₹%.2f".format(mTotal)
     }
 

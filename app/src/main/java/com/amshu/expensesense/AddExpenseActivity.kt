@@ -1,9 +1,12 @@
 package com.amshu.expensesense
 
+import android.app.Activity
 import android.app.DatePickerDialog
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
@@ -19,7 +22,9 @@ class AddExpenseActivity : AppCompatActivity() {
     private lateinit var tvDate: TextView
     private lateinit var tvClear: TextView
     private lateinit var layoutDate: RelativeLayout
-    private lateinit var spinnerCategory: Spinner
+    private lateinit var ivCategoryIcon: ImageView
+    private lateinit var pbCategorySelect: ProgressBar
+    private var selectedCategory: String = "other"
     private lateinit var chipGroupPaymentMethod: com.google.android.material.chip.ChipGroup
     private lateinit var layoutDynamicSelector: LinearLayout
     private lateinit var tvSelectorLabel: TextView
@@ -32,6 +37,18 @@ class AddExpenseActivity : AppCompatActivity() {
     private val calendar = Calendar.getInstance()
     private lateinit var budgetRepository: BudgetRepository
     private lateinit var accountRepository: AccountRepository
+
+    private val categorySelectionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val category = result.data?.getStringExtra("selected_category")
+            if (!category.isNullOrEmpty()) {
+                selectedCategory = category
+                updateCategoryImage(selectedCategory)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,7 +78,8 @@ class AddExpenseActivity : AppCompatActivity() {
         tvDate        = findViewById(R.id.tvDate)
         tvClear       = findViewById(R.id.tvClear)
         layoutDate    = findViewById(R.id.layoutDate)
-        spinnerCategory = findViewById(R.id.spinnerCategory)
+        ivCategoryIcon = findViewById(R.id.ivCategoryIcon)
+        pbCategorySelect = findViewById(R.id.pbCategorySelect)
         
         // Payment Method Views
         chipGroupPaymentMethod = findViewById(R.id.chipGroupPaymentMethod)
@@ -71,13 +89,13 @@ class AddExpenseActivity : AppCompatActivity() {
         
         btnAddExpense = findViewById(R.id.btnAddExpense)
 
-        // Populate category spinner
-        val categories = resources.getStringArray(R.array.transaction_categories)
-        spinnerCategory.adapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_item,
-            categories
-        ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        // Initialize category UI
+        updateCategoryImage(selectedCategory)
+        
+        ivCategoryIcon.setOnClickListener {
+            val intent = Intent(this, CategorySelectionActivity::class.java)
+            categorySelectionLauncher.launch(intent)
+        }
 
         // Setup Payment Method Selection
         chipGroupPaymentMethod.setOnCheckedChangeListener { group, checkedId ->
@@ -107,11 +125,21 @@ class AddExpenseActivity : AppCompatActivity() {
             if (!hasFocus) {
                 val expenseName = etName.text.toString().trim()
                 if (expenseName.isNotEmpty()) {
+                    pbCategorySelect.visibility = View.VISIBLE
+                    ivCategoryIcon.visibility = View.INVISIBLE
+                    
                     val detectedCategory = CategoryHelper.detectCategory(expenseName)
-                    val index = categories.indexOfFirst { it.equals(detectedCategory, ignoreCase = true) }
-                    if (index >= 0) {
-                        spinnerCategory.setSelection(index)
-                    }
+                    
+                    // Small delay for visual feedback
+                    etName.postDelayed({
+                        selectedCategory = detectedCategory
+                        updateCategoryImage(selectedCategory)
+                        pbCategorySelect.visibility = View.GONE
+                        ivCategoryIcon.visibility = View.VISIBLE
+                    }, 400)
+                } else {
+                    selectedCategory = "other"
+                    updateCategoryImage(selectedCategory)
                 }
             }
         }
@@ -130,10 +158,8 @@ class AddExpenseActivity : AppCompatActivity() {
                 etAmount.setText(amount.toString())
             }
             if (!category.isNullOrEmpty()) {
-                val index = categories.indexOfFirst { it.equals(category, ignoreCase = true) }
-                if (index >= 0) {
-                    spinnerCategory.setSelection(index)
-                }
+                selectedCategory = category
+                updateCategoryImage(selectedCategory)
             }
             if (timestamp != -1L) {
                 calendar.timeInMillis = timestamp
@@ -142,6 +168,10 @@ class AddExpenseActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateCategoryImage(category: String) {
+        val iconResId = CategoryAdapter.getCategoryIcon(category)
+        ivCategoryIcon.setImageResource(iconResId)
+    }
 
     private fun showDatePicker() {
         DatePickerDialog(
@@ -253,7 +283,7 @@ class AddExpenseActivity : AppCompatActivity() {
         }
 
         val username  = user.email!!.substringBefore("@")
-        val category  = spinnerCategory.selectedItem?.toString() ?: "other"
+        val category  = selectedCategory
         val timestamp = calendar.timeInMillis
         val sanctionedName = name.replace(Regex("[.#$\\[\\]/]"), "-")
         val uniqueTitleKey = "$sanctionedName-$timestamp"

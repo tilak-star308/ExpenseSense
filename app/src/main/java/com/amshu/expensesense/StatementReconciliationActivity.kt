@@ -8,7 +8,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.text.InputType
-import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
@@ -50,7 +49,7 @@ class StatementReconciliationActivity : AppCompatActivity() {
     private val viewModel: ReconciliationViewModel by viewModels()
 
     // Developer Debug Toggle
-    private val isDebugMode = true
+    private val isDebugMode = false
 
     private lateinit var debugSectionRaw: View
     private lateinit var debugSectionA: View
@@ -68,7 +67,6 @@ class StatementReconciliationActivity : AppCompatActivity() {
     private val pickPdfLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
-                if (BuildConfig.DEBUG) { Log.d("Recon", "PDF selected: $uri") }
                 try {
                     contentResolver.takePersistableUriPermission(
                         uri,
@@ -187,7 +185,6 @@ class StatementReconciliationActivity : AppCompatActivity() {
                             PDDocument.load(inputStream)
                         }
                     } catch (e: InvalidPasswordException) {
-                        if (BuildConfig.DEBUG) { Log.d("Recon", "Password required for PDF") }
                         withContext(Dispatchers.Main) {
                             hideProcessing()
                             if (password != null) {
@@ -196,18 +193,13 @@ class StatementReconciliationActivity : AppCompatActivity() {
                                     "Incorrect password. Try again.",
                                     Toast.LENGTH_SHORT
                                 ).show()
-                                if (BuildConfig.DEBUG) { Log.d("Recon", "Password incorrect") }
                             }
                             showPasswordDialog(uri)
                         }
                         return@launch
                     }
 
-                    if (password != null) {
-                        if (BuildConfig.DEBUG) { Log.d("Recon", "Password correct") }
-                    }
 
-                    if (BuildConfig.DEBUG) { Log.d("Recon", "Text extraction started") }
                     withContext(Dispatchers.Main) {
                         tvProcessingStatus.text = "Extracting text..."
                     }
@@ -217,7 +209,6 @@ class StatementReconciliationActivity : AppCompatActivity() {
 
                     // Condition: If extracted text is EMPTY or too small (< threshold)
                     if (extractedText.trim().length < 50) {
-                        if (BuildConfig.DEBUG) { Log.d("Recon", "OCR fallback triggered. Base text length: ${extractedText.trim().length}") }
                         
                         // Save unencrypted copy for PdfRenderer OCR
                         val tempFile = File(cacheDir, "temp_reconciliation_statement.pdf")
@@ -231,14 +222,12 @@ class StatementReconciliationActivity : AppCompatActivity() {
                         viewModel.updateRawDebug(ocrText, "OCR")
                         viewModel.parseTransactions(ocrText)
                     } else {
-                        if (BuildConfig.DEBUG) { Log.d("Recon", "Extraction completed via PDFBox") }
                         document.close()
                         viewModel.updateRawDebug(extractedText, "PDF Text Extraction")
                         viewModel.parseTransactions(extractedText)
                     }
                 }
             } catch (e: Exception) {
-                if (BuildConfig.DEBUG) { Log.e("Recon", "Error processing PDF", e) }
                 withContext(Dispatchers.Main) {
                     hideProcessing()
                     Toast.makeText(
@@ -307,13 +296,11 @@ class StatementReconciliationActivity : AppCompatActivity() {
                 pdfRenderer.close()
                 fileDescriptor.close()
 
-                if (BuildConfig.DEBUG) { Log.d("Recon", "Extraction completed via OCR Fallback") }
                 
                 val finalOcr = resultBuilder.toString().trim()
                 if (finalOcr.isEmpty()) "No readable text found" else finalOcr
 
             } catch (e: Exception) {
-                if (BuildConfig.DEBUG) { Log.e("Recon", "OCR Fallback failed", e) }
                 "OCR processing failed: ${e.message}"
             }
         }

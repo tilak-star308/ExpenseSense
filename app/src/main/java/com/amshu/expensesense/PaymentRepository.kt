@@ -1,6 +1,5 @@
 package com.amshu.expensesense
 
-import android.util.Log
 import com.google.firebase.database.FirebaseDatabase
 import java.text.SimpleDateFormat
 import java.util.*
@@ -97,13 +96,6 @@ class PaymentRepository(
     private fun updateLinkedAccount(transaction: Transaction, isDelete: Boolean): Account? {
         val account = resolveAccount(transaction) ?: return null
         
-        if (account != null) {
-            if (isDelete) {
-                if (BuildConfig.DEBUG) { Log.d("SYNC_DEBUG", "Before Delete Reverse → " + account.name + " Balance: " + account.balance) }
-            } else {
-                if (BuildConfig.DEBUG) { Log.d("SYNC_DEBUG", "Before Update → " + account.name + " Balance: " + account.balance) }
-            }
-        }
         
         val updatedBalance = when {
             account.type.equals("Credit", ignoreCase = true) && isDelete -> account.balance - transaction.amount
@@ -115,13 +107,6 @@ class PaymentRepository(
         val updatedAccount = account.copy(balance = updatedBalance)
         accountDao.updateAccount(updatedAccount)
 
-        if (updatedAccount != null) {
-            if (isDelete) {
-                if (BuildConfig.DEBUG) { Log.d("SYNC_DEBUG", "After Delete Reverse → " + updatedAccount.name + " Balance: " + updatedAccount.balance) }
-            } else {
-                if (BuildConfig.DEBUG) { Log.d("SYNC_DEBUG", "After Update → " + updatedAccount.name + " Balance: " + updatedAccount.balance) }
-            }
-        }
 
         return updatedAccount
     }
@@ -148,9 +133,6 @@ class PaymentRepository(
                 val accountName = transaction.referenceId ?: transaction.accountName
                 accountName.takeIf { it.isNotBlank() }?.let(accountDao::getAccountByName)
             }
-        }
-        if (resolved != null) {
-            if (BuildConfig.DEBUG) { Log.d("SYNC_DEBUG", "Room Account Read → " + resolved.name + " Balance: " + resolved.balance) }
         }
         return resolved
     }
@@ -217,7 +199,6 @@ class PaymentRepository(
 
     private fun syncAccountToFirebase(username: String, account: Account?) {
         if (account == null) return
-        if (BuildConfig.DEBUG) { Log.d("SYNC_DEBUG", "Updating Firebase → " + account.name + " Balance: " + account.balance) }
         FirebaseDatabase.getInstance()
             .getReference("users/$username/accounts/${account.name}/balance")
             .setValue(account.balance)
