@@ -20,7 +20,7 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
-# Firebase & Room Data Models
+# Room & Data Models - (Entities must be kept for Room/Firebase reflection)
 -keep class com.amshu.expensesense.Account { *; }
 -keep class com.amshu.expensesense.Transaction { *; }
 -keep class com.amshu.expensesense.Budget { *; }
@@ -34,6 +34,12 @@
     public <methods>;
 }
 
+# Firebase & Google Play Services
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+
 # Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
@@ -41,7 +47,8 @@
 # ML Kit
 -keep class com.google.mlkit.** { *; }
 
-# PDFBox Android Optional Dependencies
+# PDFBox Android (Necessary to keep for runtime PDF loading/processing)
 -dontwarn com.gemalto.jp2.**
 -dontwarn org.bouncycastle.**
 -dontwarn com.tom_roush.pdfbox.**
+-keep class com.tom_roush.pdfbox.** { *; }

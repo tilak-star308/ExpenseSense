@@ -111,7 +111,9 @@ class CardRepository(
                             
                             // Process Debit Cards
                             val debitSnap = snapshot.child("debit_cards")
+                            var debitCount = 0
                             for (ds in debitSnap.children) {
+                                debitCount++
                                 val card = ds.getValue(DebitCard::class.java)
                                 if (card != null && !localDebits.containsKey(card.cardName)) {
                                     debitCardDao.insertDebitCard(card)
@@ -121,7 +123,9 @@ class CardRepository(
                             
                             // Process Credit Cards
                             val creditSnap = snapshot.child("credit_cards")
+                            var creditCount = 0
                             for (cs in creditSnap.children) {
+                                creditCount++
                                 val card = cs.getValue(CreditCard::class.java)
                                 if (card != null && !localCredits.containsKey(card.cardName)) {
                                     creditCardDao.insertCreditCard(card)

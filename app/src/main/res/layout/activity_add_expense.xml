@@ -164,7 +164,7 @@
                     android:paddingEnd="20dp"
                     android:paddingBottom="26dp">
 
-                    <!-- ┌─ NAME ──────────────────────────────────────┐ -->
+                    <!-- ┌─ CATEGORY & NAME ───────────────────────────┐ -->
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -175,38 +175,66 @@
                         android:textSize="10sp"
                         android:textStyle="bold" />
 
-                    <RelativeLayout
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="52dp"
+                        android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:background="@drawable/bg_field_normal"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="12dp">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
 
-                        <EditText
-                            android:id="@+id/etName"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:layout_toStartOf="@+id/ivDropdown"
-                            android:background="@null"
-                            android:hint="e.g. Netflix"
-                            android:imeOptions="actionNext"
-                            android:inputType="textCapWords"
-                            android:paddingEnd="4dp"
-                            android:textColor="#2C2C2C"
-                            android:textColorHint="#C5C5C5"
-                            android:textSize="15sp" />
+                        <!-- Category Selector -->
+                        <RelativeLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="12dp">
 
-                        <ImageView
-                            android:id="@+id/ivDropdown"
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_alignParentEnd="true"
-                            android:layout_centerVertical="true"
-                            android:contentDescription="Dropdown"
-                            android:src="@android:drawable/arrow_down_float"
-                            app:tint="#BBBBBB" />
-                    </RelativeLayout>
+                            <androidx.cardview.widget.CardView
+                                android:layout_width="60dp"
+                                android:layout_height="60dp"
+                                app:cardCornerRadius="8dp"
+                                app:cardElevation="0dp"
+                                app:cardBackgroundColor="#F5F5F5">
+
+                                <ImageView
+                                    android:id="@+id/ivCategoryIcon"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:layout_gravity="center"
+                                    android:scaleType="centerCrop" />
+                            </androidx.cardview.widget.CardView>
+
+                            <ProgressBar
+                                android:id="@+id/pbCategorySelect"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_centerInParent="true"
+                                android:elevation="2dp"
+                                android:visibility="gone" />
+                        </RelativeLayout>
+
+                        <!-- Name Field -->
+                        <RelativeLayout
+                            android:layout_width="0dp"
+                            android:layout_height="60dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_field_normal"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="12dp">
+
+                            <EditText
+                                android:id="@+id/etName"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:background="@null"
+                                android:hint="Expense Name"
+                                android:imeOptions="actionNext"
+                                android:inputType="textCapWords"
+                                android:paddingEnd="4dp"
+                                android:textColor="#2C2C2C"
+                                android:textColorHint="#C5C5C5"
+                                android:textSize="15sp" />
+                        </RelativeLayout>
+                    </LinearLayout>
                     <!-- └─────────────────────────────────────────────┘ -->
 
                     <!-- ┌─ AMOUNT ────────────────────────────────────┐ -->
@@ -223,7 +251,7 @@
 
                     <RelativeLayout
                         android:layout_width="match_parent"
-                        android:layout_height="52dp"
+                        android:layout_height="60dp"
                         android:layout_marginTop="8dp"
                         android:background="@drawable/bg_field_teal"
                         android:paddingStart="14dp"
@@ -275,7 +303,7 @@
                     <RelativeLayout
                         android:id="@+id/layoutDate"
                         android:layout_width="match_parent"
-                        android:layout_height="52dp"
+                        android:layout_height="60dp"
                         android:layout_marginTop="8dp"
                         android:background="@drawable/bg_field_normal"
                         android:clickable="true"
@@ -307,28 +335,7 @@
                     </RelativeLayout>
                     <!-- └─────────────────────────────────────────────┘ -->
 
-                    <!-- ┌─ CATEGORY ──────────────────────────────────┐ -->
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="20dp"
-                        android:letterSpacing="0.12"
-                        android:text="CATEGORY"
-                        android:textAllCaps="true"
-                        android:textColor="#AAAAAA"
-                        android:textSize="10sp"
-                        android:textStyle="bold" />
 
-                    <Spinner
-                        android:id="@+id/spinnerCategory"
-                        android:layout_width="match_parent"
-                        android:layout_height="52dp"
-                        android:layout_marginTop="8dp"
-                        android:background="@drawable/bg_field_normal"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="14dp"
-                        android:entries="@array/transaction_categories" />
-                    <!-- └─────────────────────────────────────────────┘ -->
 
                     <!-- ┌─ PAYMENT METHOD ──────────────────────────────┐ -->
                     <TextView
@@ -416,7 +423,7 @@
                         <Spinner
                             android:id="@+id/spinnerDynamic"
                             android:layout_width="match_parent"
-                            android:layout_height="52dp"
+                            android:layout_height="60dp"
                             android:layout_marginTop="8dp"
                             android:background="@drawable/bg_field_normal"
                             android:paddingStart="14dp"

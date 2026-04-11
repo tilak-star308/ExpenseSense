@@ -1,6 +1,5 @@
 package com.amshu.expensesense
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -38,20 +37,16 @@ class ReconciliationViewModel : ViewModel() {
     }
 
     fun updateRawDebug(text: String, source: String) {
-        if (BuildConfig.DEBUG) { Log.d("ReconViewModel", "RAW TEXT LENGTH: ${text.length}") }
-        if (BuildConfig.DEBUG) { Log.d("ReconViewModel", "RAW TEXT PREVIEW: ${text.take(200)}") }
         debugRawText.postValue(text)
         debugRawSource.postValue("Source: $source")
     }
 
     fun parseTransactions(rawText: String) {
         _parsingState.postValue(ParsingState.Loading)
-        if (BuildConfig.DEBUG) { Log.d("ReconViewModel", "Local rule-based pipeline started") }
 
         viewModelScope.launch(Dispatchers.IO) {
             val startTime = System.currentTimeMillis()
             try {
-                if (BuildConfig.DEBUG) { Log.d("ReconViewModel", "Parsing started") }
                 val allLines = rawText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
                 
                 val transactionLines = detectTransactionSection(allLines)
@@ -59,7 +54,6 @@ class ReconciliationViewModel : ViewModel() {
 
                 val blocks = constructTransactionBlocks(transactionLines)
                 debugBlocksText.postValue(blocks.joinToString("\n---\n") { it.getCleanedText() })
-                if (BuildConfig.DEBUG) { Log.d("ReconViewModel", "Total blocks: ${blocks.size}") }
 
                 val parsedList = mutableListOf<ReconciliationTransaction>()
                 var unknownCount = 0
@@ -89,14 +83,10 @@ class ReconciliationViewModel : ViewModel() {
 
                 val finalResults = parsedList.distinct().sortedByDescending { it.date }
                 
-                if (BuildConfig.DEBUG) { Log.d("ReconViewModel", "Parsed transactions: ${finalResults.size}") }
-                if (BuildConfig.DEBUG) { Log.d("ReconViewModel", "Unknown type count: $unknownCount") }
-                if (BuildConfig.DEBUG) { Log.d("ReconViewModel", "Parsing completed in ${System.currentTimeMillis() - startTime}ms") }
 
                 _parsingState.postValue(ParsingState.Success(finalResults))
 
             } catch (e: Exception) {
-                if (BuildConfig.DEBUG) { Log.e("ReconViewModel", "Pipeline failure", e) }
                 postError("Extraction failed: ${e.message}")
             }
         }
@@ -278,13 +268,6 @@ class ReconciliationViewModel : ViewModel() {
             }
         }
 
-        if (BuildConfig.DEBUG) { Log.d("START_DETECTION", "Initial startIndex: $startIndex") }
-        if (BuildConfig.DEBUG) { Log.d("START_DETECTION", "Refined startIndex: $refinedStart") }
-        if (BuildConfig.DEBUG) { Log.d("START_DETECTION", "First 5 lines from start:") }
-        
-        lines.subList(refinedStart, kotlin.math.min(refinedStart + 5, lines.size)).forEach {
-            if (BuildConfig.DEBUG) { Log.d("START_DETECTION", it) }
-        }
 
         return lines.subList(refinedStart, lines.size)
     }
@@ -309,7 +292,6 @@ class ReconciliationViewModel : ViewModel() {
 
         currentBlock?.let { blocks.add(it) }
 
-        if (BuildConfig.DEBUG) { Log.d("ReconViewModel", "Detected starts: \$startCount") }
         return blocks
     }
 

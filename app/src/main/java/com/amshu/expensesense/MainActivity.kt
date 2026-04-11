@@ -34,7 +34,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.graphics.Color
-import android.util.Log
 
 
 class MainActivity : AppCompatActivity() {
@@ -205,7 +204,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun processImageUri(uri: Uri) {
-        if (BuildConfig.DEBUG) { Log.d("AI_DEBUG", "Image path: $uri") }
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         try {
             val image = InputImage.fromFilePath(this, uri)
@@ -215,35 +213,26 @@ class MainActivity : AppCompatActivity() {
                     if (rawText.isNotEmpty()) {
                         parseWithGemini(rawText)
                     } else {
-                        if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "API FAILED: OCR failed: No text detected") }
                         onScanFailure("OCR failed: No text detected")
                     }
                 }
                 .addOnFailureListener { e -> 
-                    if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "Crash: " + e.message, e) }
-                    if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "API FAILED: OCR failed: ${e.message}", e) }
                     onScanFailure("OCR failed: ${e.message}") 
                 }
         } catch (e: Exception) {
-            if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "Crash: " + e.message, e) }
-            if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "API FAILED: Process error: ${e.message}", e) }
             onScanFailure("Process error: ${e.message}")
         }
     }
 
     private fun parseWithGemini(rawText: String) {
         try {
-            if (BuildConfig.DEBUG) { Log.d("AI_DEBUG", "API KEY: " + BuildConfig.GEMINI_API_KEY) }
-            if (BuildConfig.DEBUG) { Log.d("AI_DEBUG", "API KEY LENGTH: " + (if (BuildConfig.GEMINI_API_KEY != null) BuildConfig.GEMINI_API_KEY.length else "null")) }
             
-            if (BuildConfig.DEBUG) { Log.d("AI_DEBUG", "Internet available: " + NetworkUtils.isInternetAvailable(this)) }
             if (!NetworkUtils.isInternetAvailable(this)) {
                 hideLoading()
                 onScanFailure("No internet connection. Please check your network and try again.")
                 return
             }
 
-            if (BuildConfig.DEBUG) { Log.d("AI_DEBUG", "OCR text: $rawText") }
 
             val client = OkHttpClient()
             val mediaType = "application/json; charset=utf-8".toMediaType()
@@ -268,14 +257,10 @@ class MainActivity : AppCompatActivity() {
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    if (BuildConfig.DEBUG) { Log.d("AI_DEBUG", "Starting API request") }
                     val response = client.newCall(request).execute()
                     val responseBody = response.body?.string()
                     
-                    if (BuildConfig.DEBUG) { Log.d("AI_DEBUG", "API Time: " + (System.currentTimeMillis() - startTime) + "ms") }
-                    
                     if (response.isSuccessful && responseBody != null) {
-                        if (BuildConfig.DEBUG) { Log.d("AI_DEBUG", "API Success Response: $responseBody") }
                         
                         val json = JSONObject(responseBody)
                         val candidates = json.optJSONArray("candidates")
@@ -300,22 +285,18 @@ class MainActivity : AppCompatActivity() {
                                     launchAddExpense(resultData)
                                 }
                             } else {
-                                if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "API FAILED: textResponse is null") }
                                 withContext(Dispatchers.Main) { 
                                     hideLoading()
                                     onScanFailure("AI failed: Unexpected response format") 
                                 }
                             }
                         } else {
-                            if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "API FAILED: candidates is null or empty") }
                             withContext(Dispatchers.Main) { 
                                 hideLoading()
                                 onScanFailure("AI failed: No response from Gemini") 
                             }
                         }
                     } else {
-                        if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "API FAILED: Response code: " + response.code) }
-                        if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "API FAILED: Error body: " + responseBody) }
                         val errorMsg = response.message
                         withContext(Dispatchers.Main) { 
                             hideLoading()
@@ -323,9 +304,6 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 } catch (e: Exception) {
-                    if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "Crash: " + e.message, e) }
-                    if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "API FAILED: " + e.message, e) }
-                    if (BuildConfig.DEBUG) { Log.d("AI_DEBUG", "API Time: " + (System.currentTimeMillis() - startTime) + "ms") }
                     withContext(Dispatchers.Main) { 
                         hideLoading()
                         onScanFailure("AI Logic Error: ${e.message}") 
@@ -333,8 +311,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         } catch (e: Exception) {
-            if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "Crash: " + e.message, e) }
-            if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "API FAILED: " + e.message, e) }
         }
     }
 
@@ -359,7 +335,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onScanFailure(message: String = "AI extraction failed. Please enter manually.") {
-        if (BuildConfig.DEBUG) { Log.e("AI_DEBUG", "onScanFailure: $message") }
         hideLoading()
         Toast.makeText(this, "Scan failed. Try again.", Toast.LENGTH_SHORT).show()
         val intent = Intent(this, AddExpenseActivity::class.java)
